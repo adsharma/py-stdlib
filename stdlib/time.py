@@ -30,6 +30,8 @@ class tm(ctypes.Structure):
         ("tm_wday", ctypes.c_int),
         ("tm_yday", ctypes.c_int),
         ("tm_isdst", ctypes.c_int),
+        ("tm_gmtoff", ctypes.c_long),  # Seconds east of UTC (Linux-specific)
+        ("tm_zone", ctypes.c_char_p),  # Timezone abbreviation (Linux-specific)
     ]
 
 
@@ -54,8 +56,8 @@ def gmtime(seconds: Optional[float] = None) -> struct_time:
     if seconds is None:
         seconds = time()
     time_t = int(seconds)
-    tm_ptr = libc.gmtime(ctypes.byref(ctypes.c_long(time_t)))
-    tm_struct = tm_ptr.contents
+    tm_struct = tm()
+    libc.gmtime_r(ctypes.byref(ctypes.c_long(time_t)), ctypes.byref(tm_struct))
 
     # Adjust tm_wday: C uses 0=Sunday, Python uses 0=Monday
     tm_wday = (tm_struct.tm_wday - 1) % 7
@@ -80,8 +82,8 @@ def localtime(seconds: Optional[float] = None) -> struct_time:
     if seconds is None:
         seconds = time()
     time_t = int(seconds)
-    tm_ptr = libc.localtime(ctypes.byref(ctypes.c_long(time_t)))
-    tm_struct = tm_ptr.contents
+    tm_struct = tm()
+    libc.localtime_r(ctypes.byref(ctypes.c_long(time_t)), ctypes.byref(tm_struct))
 
     # Adjust tm_wday: C uses 0=Sunday, Python uses 0=Monday
     tm_wday = (tm_struct.tm_wday - 1) % 7
