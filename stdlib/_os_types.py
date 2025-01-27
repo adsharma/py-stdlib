@@ -32,7 +32,7 @@ class mac_dirent(ctypes.Structure):
 
 
 if platform.system() == "Darwin":  # macOS
-    dirent = mac_dirent  # noqa: F811
+    dirent = mac_dirent  # type: ignore # noqa: F811
 
 # Define the function prototypes
 libc.opendir.argtypes = [ctypes.c_char_p]

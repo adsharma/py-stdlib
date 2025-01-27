@@ -66,7 +66,7 @@ def test_listdir():
             f.write("Hello, world!")
         with open(str(path2), "w") as f:
             f.write("Goodbye, world!")
-        files = listdir(str(tmpdir_path))
+        files = listdir(tmpdir_path)
         assert len(files) == 2
         # Check if the filenames are in the list
         assert path1.name in {f.name for f in files}

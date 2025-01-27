@@ -123,8 +123,9 @@ def walk(top: str) -> Generator[Tuple[str, List[str], List[str]], None, None]:
     files = []
 
     # List the directory contents
-    for name in listdir(top):
-        full_path = pathlib.Path(top) / name
+    top_path = pathlib.Path(top)
+    for name in listdir(top_path):
+        full_path = top_path / name
         if full_path.is_dir():
             dirs.append(name)
         else:
@@ -135,11 +136,11 @@ def walk(top: str) -> Generator[Tuple[str, List[str], List[str]], None, None]:
 
     # Recurse into subdirectories
     for dir_name in dirs:
-        new_top = pathlib.Path(top) / dir_name
+        new_top = top_path / dir_name
         yield from walk(new_top)
 
 
-def chdir(path) -> None:
+def chdir(path: str) -> None:
     """
     Change the current working directory.
 
