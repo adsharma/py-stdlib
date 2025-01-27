@@ -167,7 +167,7 @@ def getcwd() -> str:
     # Call the getcwd function
     result = libc.getcwd(buffer, 1024)
     # Check for errors
-    if not result:
+    if result is None:
         errno = ctypes.get_errno()
         raise OSError(errno, os.strerror(errno))
     # Return the current working directory

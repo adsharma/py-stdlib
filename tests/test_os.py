@@ -97,7 +97,7 @@ def test_chdir():
         tmpdir_path = pathlib.Path(tmpdir)
         original_dir = getcwd()
         chdir(str(tmpdir_path))
-        assert getcwd() == tmpdir_path
+        assert getcwd() == str(tmpdir_path)
         chdir(str(original_dir))
 
 
