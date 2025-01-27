@@ -1,4 +1,4 @@
-# Implement python stdlib in typed python
+# Implement python stdlib in statically typed python using FFI
 
 This avoids C-API and breaks compatibility with CPython. But it has some benefits:
 
