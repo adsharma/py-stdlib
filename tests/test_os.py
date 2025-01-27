@@ -102,4 +102,4 @@ def test_chdir():
 
 
 def test_getcwd():
-    assert getcwd() == pathlib.Path(os.getcwd())
+    assert getcwd() == os.getcwd()

@@ -11,7 +11,7 @@ S_IRWXG = 0o070
 S_IRWXO = 0o007
 
 
-def mkdir(path, mode=S_IRWXU | S_IRWXG | S_IRWXO):
+def mkdir(path: str, mode=S_IRWXU | S_IRWXG | S_IRWXO) -> int:
     """
     Create a directory.
 
@@ -30,7 +30,7 @@ def mkdir(path, mode=S_IRWXU | S_IRWXG | S_IRWXO):
     return result
 
 
-def rmdir(path):
+def rmdir(path: str) -> int:
     """
     Remove a directory.
 
@@ -48,7 +48,7 @@ def rmdir(path):
     return result
 
 
-def remove(path):
+def remove(path: str) -> int:
     """
     Remove a file.
 
@@ -66,7 +66,7 @@ def remove(path):
     return result
 
 
-def rename(src, dst):
+def rename(src: str, dst: str) -> int:
     """
     Rename a file or directory.
 
@@ -139,7 +139,7 @@ def walk(top: str) -> Generator[Tuple[str, List[str], List[str]], None, None]:
         yield from walk(new_top)
 
 
-def chdir(path):
+def chdir(path) -> None:
     """
     Change the current working directory.
 
@@ -156,7 +156,7 @@ def chdir(path):
         raise OSError(errno, os.strerror(errno))
 
 
-def getcwd():
+def getcwd() -> str:
     """
     Return the current working directory.
 
