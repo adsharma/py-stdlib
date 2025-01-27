@@ -56,6 +56,10 @@ def gmtime(seconds: Optional[float] = None) -> struct_time:
     time_t = int(seconds)
     tm_ptr = libc.gmtime(ctypes.byref(ctypes.c_long(time_t)))
     tm_struct = tm_ptr.contents
+
+    # Adjust tm_wday: C uses 0=Sunday, Python uses 0=Monday
+    tm_wday = (tm_struct.tm_wday - 1) % 7
+
     return struct_time(
         tm_year=tm_struct.tm_year + 1900,  # Years since 1900
         tm_mon=tm_struct.tm_mon + 1,  # Months are 0-11 in C
@@ -63,7 +67,7 @@ def gmtime(seconds: Optional[float] = None) -> struct_time:
         tm_hour=tm_struct.tm_hour,
         tm_min=tm_struct.tm_min,
         tm_sec=tm_struct.tm_sec,
-        tm_wday=tm_struct.tm_wday,
+        tm_wday=tm_wday,
         tm_yday=tm_struct.tm_yday + 1,  # Days are 0-365 in C
         tm_isdst=tm_struct.tm_isdst,
     )
@@ -78,6 +82,10 @@ def localtime(seconds: Optional[float] = None) -> struct_time:
     time_t = int(seconds)
     tm_ptr = libc.localtime(ctypes.byref(ctypes.c_long(time_t)))
     tm_struct = tm_ptr.contents
+
+    # Adjust tm_wday: C uses 0=Sunday, Python uses 0=Monday
+    tm_wday = (tm_struct.tm_wday - 1) % 7
+
     return struct_time(
         tm_year=tm_struct.tm_year + 1900,  # Years since 1900
         tm_mon=tm_struct.tm_mon + 1,  # Months are 0-11 in C
@@ -85,7 +93,7 @@ def localtime(seconds: Optional[float] = None) -> struct_time:
         tm_hour=tm_struct.tm_hour,
         tm_min=tm_struct.tm_min,
         tm_sec=tm_struct.tm_sec,
-        tm_wday=tm_struct.tm_wday,
+        tm_wday=tm_wday,
         tm_yday=tm_struct.tm_yday + 1,  # Days are 0-365 in C
         tm_isdst=tm_struct.tm_isdst,
     )
