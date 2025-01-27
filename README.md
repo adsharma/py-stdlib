@@ -4,7 +4,9 @@ This avoids C-API and breaks compatibility with CPython. But it has some benefit
 
 * Moves [py2many](http://github.com/py2many/py2many) forward
 * Allows transpilation to compiled languages
-* Could use multiple-dispatch where supported (Julia)
+* Could use function overloading 
+  * `listdir(path: str) -> List[str]`
+  * `listdir(pathlib.Path: str) -> List[pathlib.Path]`
 * Help other similar projects in the python ecosystem that want to innovate
 
 Targeting top 100 most used stdlib functions, heavily assisted by LLMs (both for identifying and
