@@ -2,7 +2,7 @@ import ctypes
 import os
 from typing import List, Union
 
-from stdlib._os_types import DIR, dirent, libc
+from stdlib._os_types import DIR, Stat, dirent, libc
 
 # Define function prototypes
 libc.opendir.argtypes = [ctypes.c_char_p]
@@ -29,6 +29,21 @@ R_OK = 4  # Check if file is readable
 W_OK = 2  # Check if file is writable
 X_OK = 1  # Check if file is executable
 
+# Constants for file type checks
+S_IFMT = 0o170000  # Bitmask for the file type bit field
+S_IFREG = 0o100000  # Regular file
+S_IFDIR = 0o040000  # Directory
+
+
+def stat(path: str) -> Stat:
+    stat_result = Stat()
+    path_bytes = path.encode("utf-8")
+
+    if libc.stat(path_bytes, ctypes.byref(stat_result)) != 0:
+        raise OSError(f"stat failed for path: {path}")
+
+    return stat_result
+
 
 class Path:
     def __init__(self, path: Union[str, "Path"]):
@@ -39,7 +54,8 @@ class Path:
 
     def __truediv__(self, other: Union[str, "Path"]) -> "Path":
         """Join paths using the / operator."""
-        return Path(os.path.join(self.path, str(other)))
+        # TODO: Handle other platforms
+        return Path(f"{self.path}/{other}")
 
     def exists(self) -> bool:
         """Check if the path exists."""
@@ -47,11 +63,11 @@ class Path:
 
     def is_dir(self) -> bool:
         """Check if the path is a directory."""
-        return os.path.isdir(self.path)
+        return stat(self.path).st_mode & S_IFMT == S_IFDIR
 
     def is_file(self) -> bool:
         """Check if the path is a file."""
-        return os.path.isfile(self.path)
+        return stat(self.path).st_mode & S_IFMT == S_IFREG
 
     def mkdir(self, mode: int = 0o755, parents: bool = False, exist_ok: bool = False):
         """Create a directory at this path."""

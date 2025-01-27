@@ -34,6 +34,56 @@ class mac_dirent(ctypes.Structure):
 if platform.system() == "Darwin":  # macOS
     dirent = mac_dirent  # type: ignore # noqa: F811
 
+
+# Define the stat structure
+class Stat(ctypes.Structure):
+    _fields_ = [
+        ("st_dev", ctypes.c_ulong),
+        ("st_ino", ctypes.c_ulong),
+        ("st_mode", ctypes.c_uint),
+        ("st_nlink", ctypes.c_ulong),
+        ("st_uid", ctypes.c_uint),
+        ("st_gid", ctypes.c_uint),
+        ("st_rdev", ctypes.c_ulong),
+        ("st_size", ctypes.c_ulong),
+        ("st_blksize", ctypes.c_ulong),
+        ("st_blocks", ctypes.c_ulong),
+        ("st_atime", ctypes.c_ulong),
+        ("st_mtime", ctypes.c_ulong),
+        ("st_ctime", ctypes.c_ulong),
+    ]
+
+
+class MacOSStat(ctypes.Structure):
+    _fields_ = [
+        ("st_dev", ctypes.c_uint32),  # Device ID of the file
+        ("st_mode", ctypes.c_uint16),  # File type and mode
+        ("st_nlink", ctypes.c_uint16),  # Number of hard links
+        ("st_ino", ctypes.c_uint64),  # Inode number
+        ("st_uid", ctypes.c_uint32),  # User ID of the file's owner
+        ("st_gid", ctypes.c_uint32),  # Group ID of the file's owner
+        ("st_rdev", ctypes.c_uint32),  # Device ID (if special file)
+        ("st_atime", ctypes.c_long),  # Time of last access
+        ("st_atimensec", ctypes.c_long),  # Nanoseconds of last access
+        ("st_mtime", ctypes.c_long),  # Time of last modification
+        ("st_mtimensec", ctypes.c_long),  # Nanoseconds of last modification
+        ("st_ctime", ctypes.c_long),  # Time of last status change
+        ("st_ctimensec", ctypes.c_long),  # Nanoseconds of last status change
+        ("st_birthtime", ctypes.c_long),  # Time of file creation (birth)
+        ("st_birthtimensec", ctypes.c_long),  # Nanoseconds of file creation
+        ("st_size", ctypes.c_int64),  # Total size in bytes
+        ("st_blocks", ctypes.c_int64),  # Number of 512-byte blocks allocated
+        ("st_blksize", ctypes.c_int32),  # Optimal block size for I/O
+        ("st_flags", ctypes.c_uint32),  # User-defined flags
+        ("st_gen", ctypes.c_uint32),  # File generation number
+        ("st_lspare", ctypes.c_int32),  # Reserved
+        ("st_qspare", ctypes.c_int64 * 2),  # Reserved
+    ]
+
+
+if platform.system() == "Darwin":  # macOS
+    Stat = MacOSStat  # type: ignore # noqa: F811
+
 # Define the function prototypes
 libc.opendir.argtypes = [ctypes.c_char_p]
 libc.opendir.restype = ctypes.POINTER(DIR)
@@ -82,3 +132,7 @@ closedir.restype = ctypes.c_int
 access = libc.access
 access.argtypes = [ctypes.c_char_p, ctypes.c_int]
 access.restype = ctypes.c_int
+
+# Define the stat function
+libc.stat.argtypes = [ctypes.c_char_p, ctypes.POINTER(Stat)]
+libc.stat.restype = ctypes.c_int
