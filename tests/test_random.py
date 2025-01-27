@@ -1,6 +1,6 @@
 import pytest
 from stdlib import random
-from typing import List, Sequence
+
 
 # Test randint
 def test_randint():
@@ -13,6 +13,7 @@ def test_randint():
     with pytest.raises(ValueError):
         random.randint(10, 1)
 
+
 # Test uniform
 def test_uniform():
     # Test valid range
@@ -23,6 +24,7 @@ def test_uniform():
     # Test invalid range
     with pytest.raises(ValueError):
         random.uniform(10.0, 1.0)
+
 
 # Test choice
 def test_choice():
@@ -35,6 +37,7 @@ def test_choice():
     with pytest.raises(IndexError):
         random.choice([])
 
+
 # Test shuffle
 def test_shuffle():
     seq = [1, 2, 3, 4, 5]
@@ -46,6 +49,7 @@ def test_shuffle():
 
     # Ensure the list is actually shuffled (probabilistic test)
     assert seq != original
+
 
 # Test sample
 def test_sample():
@@ -61,6 +65,7 @@ def test_sample():
     # Test k larger than population
     with pytest.raises(ValueError):
         random.sample(population, 20)
+
 
 # Run tests
 if __name__ == "__main__":

@@ -7,9 +7,11 @@ from typing import Generator, Tuple, List
 # Load the libc library
 libc = ctypes.CDLL(None)
 
+
 # Define the necessary types and structures
 class DIR(ctypes.Structure):
     pass
+
 
 class dirent(ctypes.Structure):
     _fields_ = [
@@ -20,18 +22,20 @@ class dirent(ctypes.Structure):
         ("d_name", ctypes.c_char * 256),
     ]
 
+
 class mac_dirent(ctypes.Structure):
     _fields_ = [
-        ("d_fileno", ctypes.c_ulong),      # ino_t (file number of entry)
-        ("d_seekoff", ctypes.c_uint64),    # __uint64_t (seek offset)
-        ("d_reclen", ctypes.c_uint16),     # __uint16_t (length of this record)
-        ("d_namlen", ctypes.c_uint16),     # __uint16_t (length of string in d_name)
-        ("d_type", ctypes.c_uint8),        # __uint8_t (file type)
+        ("d_fileno", ctypes.c_ulong),  # ino_t (file number of entry)
+        ("d_seekoff", ctypes.c_uint64),  # __uint64_t (seek offset)
+        ("d_reclen", ctypes.c_uint16),  # __uint16_t (length of this record)
+        ("d_namlen", ctypes.c_uint16),  # __uint16_t (length of string in d_name)
+        ("d_type", ctypes.c_uint8),  # __uint8_t (file type)
         ("d_name", ctypes.c_char * 1024),  # char[1024] (name of the entry)
     ]
 
+
 if platform.system() == "Darwin":  # macOS
-    dirent = mac_dirent
+    dirent = mac_dirent  # noqa: F811
 
 # Define the function prototypes
 libc.opendir.argtypes = [ctypes.c_char_p]
@@ -83,6 +87,7 @@ S_IRWXU = 0o700
 S_IRWXG = 0o070
 S_IRWXO = 0o007
 
+
 def path_join(*paths):
     """
     Join multiple path components together.
@@ -90,7 +95,8 @@ def path_join(*paths):
     :param paths: The path components to join.
     :return: The joined path.
     """
-    return '/'.join(paths)
+    return "/".join(paths)
+
 
 def path_exists(path):
     """
@@ -103,7 +109,8 @@ def path_exists(path):
     access = libc.access
     access.argtypes = [ctypes.c_char_p, ctypes.c_int]
     access.restype = ctypes.c_int
-    return access(path.encode('utf-8'), 0) == 0
+    return access(path.encode("utf-8"), 0) == 0
+
 
 def mkdir(path, mode=S_IRWXU | S_IRWXG | S_IRWXO):
     """
@@ -114,7 +121,7 @@ def mkdir(path, mode=S_IRWXU | S_IRWXG | S_IRWXO):
     :return: 0 on success, -1 on failure.
     """
     # Convert the path to bytes
-    path_bytes = path.encode('utf-8')
+    path_bytes = path.encode("utf-8")
     # Call the mkdir function
     result = libc.mkdir(path_bytes, mode)
     # Check for errors
@@ -122,6 +129,7 @@ def mkdir(path, mode=S_IRWXU | S_IRWXG | S_IRWXO):
         errno = ctypes.get_errno()
         raise OSError(errno, os.strerror(errno))
     return result
+
 
 def rmdir(path):
     """
@@ -131,7 +139,7 @@ def rmdir(path):
     :return: 0 on success, -1 on failure.
     """
     # Convert the path to bytes
-    path_bytes = path.encode('utf-8')
+    path_bytes = path.encode("utf-8")
     # Call the rmdir function
     result = libc.rmdir(path_bytes)
     # Check for errors
@@ -139,6 +147,7 @@ def rmdir(path):
         errno = ctypes.get_errno()
         raise OSError(errno, os.strerror(errno))
     return result
+
 
 def remove(path):
     """
@@ -148,7 +157,7 @@ def remove(path):
     :return: 0 on success, -1 on failure.
     """
     # Convert the path to bytes
-    path_bytes = path.encode('utf-8')
+    path_bytes = path.encode("utf-8")
     # Call the unlink function
     result = unlink(path_bytes)
     # Check for errors
@@ -156,6 +165,7 @@ def remove(path):
         errno = ctypes.get_errno()
         raise OSError(errno, os.strerror(errno))
     return result
+
 
 def rename(src, dst):
     """
@@ -166,8 +176,8 @@ def rename(src, dst):
     :return: 0 on success, -1 on failure.
     """
     # Convert the paths to bytes
-    src_bytes = src.encode('utf-8')
-    dst_bytes = dst.encode('utf-8')
+    src_bytes = src.encode("utf-8")
+    dst_bytes = dst.encode("utf-8")
     # Call the rename function
     result = libc.rename(src_bytes, dst_bytes)
     # Check for errors
@@ -175,6 +185,7 @@ def rename(src, dst):
         errno = ctypes.get_errno()
         raise OSError(errno, os.strerror(errno))
     return result
+
 
 def listdir(path):
     """
@@ -184,7 +195,7 @@ def listdir(path):
     :return: A list of files and directories.
     """
     # Convert the path to bytes
-    path_bytes = path.encode('utf-8')
+    path_bytes = path.encode("utf-8")
     # Open the directory
     dir_p = libc.opendir(path_bytes)
     if dir_p is None:
@@ -198,13 +209,14 @@ def listdir(path):
             if not entry_p:
                 break
             entry = entry_p.contents
-            entry_name = entry.d_name.decode('utf-8')
-            if entry_name != '.' and entry_name != '..':
+            entry_name = entry.d_name.decode("utf-8")
+            if entry_name != "." and entry_name != "..":
                 entries.append(entry_name)
     finally:
         # Close the directory
         closedir(dir_p)
     return entries
+
 
 def walk(top: str) -> Generator[Tuple[str, List[str], List[str]], None, None]:
     """Recursively walk a directory tree using libc."""
@@ -227,6 +239,7 @@ def walk(top: str) -> Generator[Tuple[str, List[str], List[str]], None, None]:
         new_top = os.path.join(top, dir_name)
         yield from walk(new_top)
 
+
 def chdir(path):
     """
     Change the current working directory.
@@ -235,13 +248,14 @@ def chdir(path):
     :return: None
     """
     # Convert the path to bytes
-    path_bytes = path.encode('utf-8')
+    path_bytes = path.encode("utf-8")
     # Call the chdir function
     result = libc.chdir(path_bytes)
     # Check for errors
     if result == -1:
         errno = ctypes.get_errno()
         raise OSError(errno, os.strerror(errno))
+
 
 def getcwd():
     """
@@ -258,4 +272,4 @@ def getcwd():
         errno = ctypes.get_errno()
         raise OSError(errno, os.strerror(errno))
     # Return the current working directory
-    return buffer.value.decode('utf-8')
+    return buffer.value.decode("utf-8")

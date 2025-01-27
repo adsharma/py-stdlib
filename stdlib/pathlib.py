@@ -34,6 +34,7 @@ R_OK = 4  # Check if file is readable
 W_OK = 2  # Check if file is writable
 X_OK = 1  # Check if file is executable
 
+
 class Path:
     def __init__(self, path: Union[str, "Path"]):
         self.path = str(path)
@@ -98,7 +99,11 @@ class Path:
     def glob(self, pattern: str) -> List["Path"]:
         """Find paths matching a glob pattern."""
         import fnmatch
-        return [child for child in self.iterdir() if fnmatch.fnmatch(child.path, pattern)]
+
+        return [
+            child for child in self.iterdir() if fnmatch.fnmatch(child.path, pattern)
+        ]
+
 
 # Example usage
 if __name__ == "__main__":
