@@ -35,22 +35,24 @@ if platform.system() == "Darwin":  # macOS
     dirent = mac_dirent  # type: ignore # noqa: F811
 
 
-# Define the stat structure
 class Stat(ctypes.Structure):
     _fields_ = [
-        ("st_dev", ctypes.c_ulong),
-        ("st_ino", ctypes.c_ulong),
-        ("st_mode", ctypes.c_uint),
-        ("st_nlink", ctypes.c_ulong),
-        ("st_uid", ctypes.c_uint),
-        ("st_gid", ctypes.c_uint),
-        ("st_rdev", ctypes.c_ulong),
-        ("st_size", ctypes.c_ulong),
-        ("st_blksize", ctypes.c_ulong),
-        ("st_blocks", ctypes.c_ulong),
-        ("st_atime", ctypes.c_ulong),
-        ("st_mtime", ctypes.c_ulong),
-        ("st_ctime", ctypes.c_ulong),
+        ("st_dev", ctypes.c_ulonglong),  # Device ID of the file
+        ("st_ino", ctypes.c_ulonglong),  # Inode number
+        ("st_nlink", ctypes.c_ulonglong),  # Number of hard links
+        ("st_mode", ctypes.c_uint),  # File type and mode
+        ("st_uid", ctypes.c_uint),  # User ID of the file's owner
+        ("st_gid", ctypes.c_uint),  # Group ID of the file's owner
+        ("st_rdev", ctypes.c_ulonglong),  # Device ID (if special file)
+        ("st_size", ctypes.c_longlong),  # Total size in bytes
+        ("st_blksize", ctypes.c_long),  # Optimal block size for I/O
+        ("st_blocks", ctypes.c_longlong),  # Number of 512-byte blocks allocated
+        ("st_atime", ctypes.c_long),  # Time of last access
+        ("st_atime_nsec", ctypes.c_long),  # Nanoseconds of last access
+        ("st_mtime", ctypes.c_long),  # Time of last modification
+        ("st_mtime_nsec", ctypes.c_long),  # Nanoseconds of last modification
+        ("st_ctime", ctypes.c_long),  # Time of last status change
+        ("st_ctime_nsec", ctypes.c_long),  # Nanoseconds of last status change
     ]
 
 
