@@ -6,7 +6,7 @@ This avoids C-API and breaks compatibility with CPython. But it has some benefit
 * Allows transpilation to compiled languages
 * Could use function overloading 
   * `listdir(path: str) -> List[str]`
-  * `listdir(pathlib.Path: str) -> List[pathlib.Path]`
+  * `listdir(path: pathlib.Path) -> List[pathlib.Path]`
 * Help other similar projects in the python ecosystem that want to innovate
 
 Targeting top 100 most used stdlib functions, heavily assisted by LLMs (both for identifying and
