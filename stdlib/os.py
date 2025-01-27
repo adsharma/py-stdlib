@@ -1,115 +1,14 @@
 import ctypes
-import os
-import platform
-from typing import Generator, Tuple, List
+import os  # for strerrno
+from typing import Generator, List, Tuple
 
-
-# Load the libc library
-libc = ctypes.CDLL(None)
-
-
-# Define the necessary types and structures
-class DIR(ctypes.Structure):
-    pass
-
-
-class dirent(ctypes.Structure):
-    _fields_ = [
-        ("d_ino", ctypes.c_ulong),
-        ("d_off", ctypes.c_long),
-        ("d_reclen", ctypes.c_ushort),
-        ("d_type", ctypes.c_ubyte),
-        ("d_name", ctypes.c_char * 256),
-    ]
-
-
-class mac_dirent(ctypes.Structure):
-    _fields_ = [
-        ("d_fileno", ctypes.c_ulong),  # ino_t (file number of entry)
-        ("d_seekoff", ctypes.c_uint64),  # __uint64_t (seek offset)
-        ("d_reclen", ctypes.c_uint16),  # __uint16_t (length of this record)
-        ("d_namlen", ctypes.c_uint16),  # __uint16_t (length of string in d_name)
-        ("d_type", ctypes.c_uint8),  # __uint8_t (file type)
-        ("d_name", ctypes.c_char * 1024),  # char[1024] (name of the entry)
-    ]
-
-
-if platform.system() == "Darwin":  # macOS
-    dirent = mac_dirent  # noqa: F811
-
-# Define the function prototypes
-libc.opendir.argtypes = [ctypes.c_char_p]
-libc.opendir.restype = ctypes.POINTER(DIR)
-
-libc.readdir.argtypes = [ctypes.POINTER(DIR)]
-libc.readdir.restype = ctypes.POINTER(dirent)
-
-libc.closedir.argtypes = [ctypes.POINTER(DIR)]
-libc.closedir.restype = ctypes.c_int
-
-# Define the mkdir function prototype
-mkdir = libc.mkdir
-mkdir.argtypes = [ctypes.c_char_p, ctypes.c_int]
-mkdir.restype = ctypes.c_int
-
-# Define the rmdir function prototype
-rmdir = libc.rmdir
-rmdir.argtypes = [ctypes.c_char_p]
-rmdir.restype = ctypes.c_int
-
-# Define the unlink function prototype (for remove)
-unlink = libc.unlink
-unlink.argtypes = [ctypes.c_char_p]
-unlink.restype = ctypes.c_int
-
-# Define the rename function prototype
-rename = libc.rename
-rename.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
-rename.restype = ctypes.c_int
-
-# Define the chdir function prototype
-chdir = libc.chdir
-chdir.argtypes = [ctypes.c_char_p]
-chdir.restype = ctypes.c_int
-
-# Define the getcwd function prototype
-getcwd = libc.getcwd
-getcwd.argtypes = [ctypes.c_char_p, ctypes.c_size_t]
-getcwd.restype = ctypes.c_char_p
-
-# Define the closedir function prototype (for listdir)
-closedir = libc.closedir
-closedir.argtypes = [ctypes.c_void_p]
-closedir.restype = ctypes.c_int
+from stdlib import pathlib
+from stdlib._os_types import libc
 
 # Define the constants for permissions
 S_IRWXU = 0o700
 S_IRWXG = 0o070
 S_IRWXO = 0o007
-
-
-def path_join(*paths):
-    """
-    Join multiple path components together.
-
-    :param paths: The path components to join.
-    :return: The joined path.
-    """
-    return "/".join(paths)
-
-
-def path_exists(path):
-    """
-    Check if a path exists.
-
-    :param path: The path to check.
-    :return: True if the path exists, False otherwise.
-    """
-    # Use the access function to check if the path exists
-    access = libc.access
-    access.argtypes = [ctypes.c_char_p, ctypes.c_int]
-    access.restype = ctypes.c_int
-    return access(path.encode("utf-8"), 0) == 0
 
 
 def mkdir(path, mode=S_IRWXU | S_IRWXG | S_IRWXO):
@@ -159,7 +58,7 @@ def remove(path):
     # Convert the path to bytes
     path_bytes = path.encode("utf-8")
     # Call the unlink function
-    result = unlink(path_bytes)
+    result = libc.unlink(path_bytes)
     # Check for errors
     if result == -1:
         errno = ctypes.get_errno()
@@ -187,7 +86,7 @@ def rename(src, dst):
     return result
 
 
-def listdir(path):
+def listdir(path: pathlib.Path) -> List[pathlib.Path]:
     """
     Return a list of files and directories in the given path.
 
@@ -195,7 +94,7 @@ def listdir(path):
     :return: A list of files and directories.
     """
     # Convert the path to bytes
-    path_bytes = path.encode("utf-8")
+    path_bytes = str(path).encode("utf-8")
     # Open the directory
     dir_p = libc.opendir(path_bytes)
     if dir_p is None:
@@ -211,10 +110,10 @@ def listdir(path):
             entry = entry_p.contents
             entry_name = entry.d_name.decode("utf-8")
             if entry_name != "." and entry_name != "..":
-                entries.append(entry_name)
+                entries.append(pathlib.Path(entry_name))
     finally:
         # Close the directory
-        closedir(dir_p)
+        libc.closedir(dir_p)
     return entries
 
 
@@ -225,8 +124,8 @@ def walk(top: str) -> Generator[Tuple[str, List[str], List[str]], None, None]:
 
     # List the directory contents
     for name in listdir(top):
-        full_path = os.path.join(top, name)
-        if os.path.isdir(full_path):
+        full_path = pathlib.Path(top) / name
+        if full_path.is_dir():
             dirs.append(name)
         else:
             files.append(name)
@@ -236,7 +135,7 @@ def walk(top: str) -> Generator[Tuple[str, List[str], List[str]], None, None]:
 
     # Recurse into subdirectories
     for dir_name in dirs:
-        new_top = os.path.join(top, dir_name)
+        new_top = pathlib.Path(top) / dir_name
         yield from walk(new_top)
 
 

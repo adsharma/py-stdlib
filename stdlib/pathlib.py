@@ -1,10 +1,8 @@
 import ctypes
 import os
 from typing import List, Union
-from stdlib.os import dirent, DIR
 
-# Load the libc library
-libc = ctypes.CDLL(None)
+from stdlib._os_types import DIR, dirent, libc
 
 # Define function prototypes
 libc.opendir.argtypes = [ctypes.c_char_p]
@@ -24,9 +22,6 @@ libc.unlink.restype = ctypes.c_int
 
 libc.rmdir.argtypes = [ctypes.c_char_p]
 libc.rmdir.restype = ctypes.c_int
-
-libc.access.argtypes = [ctypes.c_char_p, ctypes.c_int]
-libc.access.restype = ctypes.c_int
 
 # Constants for access()
 F_OK = 0  # Check if file exists
@@ -103,6 +98,16 @@ class Path:
         return [
             child for child in self.iterdir() if fnmatch.fnmatch(child.path, pattern)
         ]
+
+    @property
+    def parent(self) -> "Path":
+        """Return the parent directory of this path."""
+        return Path(os.path.dirname(self.path))
+
+    @property
+    def name(self) -> str:
+        """Return the base name of this path."""
+        return os.path.basename(self.path)
 
 
 # Example usage
