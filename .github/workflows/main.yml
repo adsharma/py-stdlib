@@ -40,6 +40,7 @@ jobs:
       - name: Run pyright
         shell: bash
         run: |
+          pip3 install pyright pytest
           pyright
 
   lint:
@@ -49,7 +50,7 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Install linters
-        run: pip3 install black flake8 pyright pytest
+        run: pip3 install black flake8
 
       - name: Run black
         run: black .
