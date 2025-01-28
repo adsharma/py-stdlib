@@ -8,3 +8,27 @@ requires-python = ">=3.9"
 
 [tool.isort]
 profile = "black"
+
+[build-system]
+requires = [
+    "setuptools>=42",
+    "scikit-build>=0.13",
+    "cmake>=3.14",
+    "ninja>=1.10",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "regex_wrapper"
+version = "0.1.0"
+description = "A Python wrapper for a C++ regex library"
+dependencies = [
+    "ctypes",
+]
+
+[tool.scikit-build]
+cmake.define.CMAKE_BUILD_TYPE = "Release"
+cmake.define.CMAKE_INSTALL_LIBDIR = "lib"
+cmake.define.CMAKE_INSTALL_INCLUDEDIR = "include"
+cmake.define.CMAKE_INSTALL_BINDIR = "bin"
+cmake.define.CMAKE_INSTALL_DATADIR = "share"
