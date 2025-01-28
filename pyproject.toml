@@ -16,7 +16,7 @@ requires = [
     "cmake>=3.14",
     "ninja>=1.10",
 ]
-build-backend = "setuptools.build_meta"
+build-backend = "scikit-build.skbuild"
 
 [tool.scikit-build]
 cmake.define.CMAKE_BUILD_TYPE = "Release"
