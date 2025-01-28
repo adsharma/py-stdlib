@@ -5,9 +5,9 @@ lib = load_library("regex_wrapper")
 
 
 def match(pattern: str, text: str) -> bool:
-    return lib.match(
+    return lib.match(  # pyright: ignore [reportAttributeAccessIssue]
         pattern.encode("utf-8"), text.encode("utf-8")
-    )  # pyright: ignore [reportAttributeAccessIssue]
+    )
 
 
 # Example usage
