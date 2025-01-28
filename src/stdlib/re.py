@@ -1,3 +1,5 @@
+from typing import cast
+
 import cffi
 
 from stdlib._cffi_util import load_library
@@ -45,7 +47,7 @@ class CompiledRegex:
         if result:
             ptr = result
             try:
-                result_bytes: bytes = ffi.string(result)
+                result_bytes = cast(bytes, ffi.string(result))
                 return result_bytes.decode("utf-8")
             finally:
                 lib.free(ptr)
@@ -60,7 +62,9 @@ class CompiledRegex:
                 # Convert the array of C strings to a Python list
                 i = 0
                 while matches_ptr[i]:
-                    matches.append(ffi.string(matches_ptr[i]).decode("utf-8"))
+                    matches.append(
+                        cast(bytes, ffi.string(matches_ptr[i])).decode("utf-8")
+                    )
                     i += 1
             finally:
                 # Free the allocated memory
@@ -75,7 +79,7 @@ class CompiledRegex:
         if result:
             ptr = result
             try:
-                result_bytes: bytes = ffi.string(result)
+                result_bytes = cast(bytes, ffi.string(result))
                 return result_bytes.decode("utf-8")
             finally:
                 lib.free(ptr)
