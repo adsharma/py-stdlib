@@ -1,4 +1,5 @@
 import sys
+from pathlib import Path
 
 import cffi
 
@@ -34,7 +35,9 @@ def load_library(lib_name):
              bool match(const char* pattern, const char* text);
              """
     )
-    return ffi.dlopen(lib_filename)
+    lib_path = Path(__file__).parent.parent / "lib" / lib_filename
+
+    return ffi.dlopen(str(lib_path))
 
 
 # Load the shared library
