@@ -1,5 +1,6 @@
-import ctypes
 import sys
+
+import cffi
 
 
 def load_library(lib_name):
@@ -27,15 +28,17 @@ def load_library(lib_name):
         f"lib{lib_name}{lib_ext}" if sys.platform != "win32" else f"{lib_name}{lib_ext}"
     )
 
-    return ctypes.CDLL(lib_filename)
+    ffi = cffi.FFI()
+    ffi.cdef(
+        """
+             bool match(const char* pattern, const char* text);
+             """
+    )
+    return ffi.dlopen(lib_filename)
 
 
 # Load the shared library
 lib = load_library("regex_wrapper")
-
-# Define the function signature
-lib.match.argtypes = [ctypes.c_char_p, ctypes.c_char_p]
-lib.match.restype = ctypes.c_bool
 
 
 def match(pattern, text):
