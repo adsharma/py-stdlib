@@ -43,4 +43,54 @@ extern "C" {
             return false;
         }
     }
+
+    // Search for a regex pattern in a string
+    const char* search_pattern(int id, const char* text) {
+        auto it = regex_cache.find(id);
+        if (it == regex_cache.end()) {
+            return nullptr; // Return nullptr if the ID is not found
+        }
+
+        std::smatch match;
+        std::string str(text);
+        if (std::regex_search(str, match, *it->second)) {
+            return match.str().c_str(); // Return the matched substring
+        }
+        return nullptr; // Return nullptr if no match is found
+    }
+
+    // Find all matches of a regex pattern in a string
+    const char* findall_pattern(int id, const char* text) {
+        auto it = regex_cache.find(id);
+        if (it == regex_cache.end()) {
+            return nullptr; // Return nullptr if the ID is not found
+        }
+
+        std::string str(text);
+        std::smatch match;
+        std::string result;
+        std::string::const_iterator searchStart(str.cbegin());
+
+        while (std::regex_search(searchStart, str.cend(), match, *it->second)) {
+            result += match.str() + "\n"; // Append each match to the result string
+            searchStart = match.suffix().first;
+        }
+
+        if (!result.empty()) {
+            return result.c_str(); // Return all matches as a single string separated by newlines
+        }
+        return nullptr; // Return nullptr if no matches are found
+    }
+
+    // Substitute all occurrences of a regex pattern in a string
+    const char* substitute_pattern(int id, const char* text, const char* replacement) {
+        auto it = regex_cache.find(id);
+        if (it == regex_cache.end()) {
+            return nullptr; // Return nullptr if the ID is not found
+        }
+
+        std::string str(text);
+        std::string result = std::regex_replace(str, *it->second, replacement);
+        return result.c_str(); // Return the modified string
+    }
 }

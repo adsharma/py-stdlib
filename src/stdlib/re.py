@@ -21,19 +21,40 @@ def match(pattern: str, text: str) -> bool:
 # Python wrapper class
 class CompiledRegex:
     def __init__(self, pattern):
-        self.id = lib.compile_pattern(  # pyright: ignore [reportAttributeAccessIssue]
-            pattern.encode("utf-8")
-        )
+        self.id = lib.compile_pattern(pattern.encode("utf-8"))  # type: ignore
         if self.id == -1:
             raise ValueError("Invalid regex pattern")
 
     def match(self, text):
-        return lib.match_compiled(  # pyright: ignore [reportAttributeAccessIssue]
-            self.id, text.encode("utf-8")
-        )
+        return lib.match_compiled(self.id, text.encode("utf-8"))  # type: ignore
 
     def __del__(self):
-        lib.release_compiled(self.id)  # pyright: ignore [reportAttributeAccessIssue]
+        lib.release_compiled(self.id)  # type: ignore
+
+    def search(self, text: str) -> str | None:
+        # Search for the compiled regex in the text
+        result = lib.search_pattern(self.id, text.encode("utf-8"))  # type: ignore
+        if result:
+            return result.decode("utf-8")
+        return None
+
+    def findall(self, text: str) -> list[str]:
+        # Find all matches of the compiled regex in the text
+        result = lib.search_pattern(self.id, text.encode("utf-8"))  # type: ignore
+        if result:
+            return result.decode("utf-8").split("\n")[
+                :-1
+            ]  # Split by newline and remove the last empty string
+        return []
+
+    def sub(self, replacement: str, text: str) -> str:
+        # Substitute all occurrences of the compiled regex in the text
+        result = lib.substitute_pattern(  # type: ignore
+            self.id, text.encode("utf-8"), replacement.encode("utf-8")
+        )
+        if result:
+            return result.decode("utf-8")
+        return text  # Return the original text if substitution fails
 
 
 def compile(pattern: str) -> CompiledRegex:

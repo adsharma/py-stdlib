@@ -112,3 +112,72 @@ def test_edge_cases():
     )  # Email regex
     assert regex.match("test@example.com") is True  # Should match
     assert regex.match("invalid-email") is False  # Should not match
+
+
+# Fixture to create a CompiledRegex object for testing
+@pytest.fixture
+def compiled_regex():
+    return CompiledRegex(r"\d+")
+
+
+# Test cases for the `search` method
+def test_search_found(compiled_regex):
+    text = "There are 123 apples and 456 oranges."
+    result = compiled_regex.search(text)
+    assert result == "123"  # First match should be "123"
+
+
+def test_search_not_found(compiled_regex):
+    text = "There are no numbers here."
+    result = compiled_regex.search(text)
+    assert result is None  # No match should return None
+
+
+# Test cases for the `findall` method
+def test_findall_multiple_matches(compiled_regex):
+    text = "There are 123 apples and 456 oranges."
+    result = compiled_regex.findall(text)
+    assert result == ["123", "456"]  # All matches should be returned
+
+
+def test_findall_no_matches(compiled_regex):
+    text = "There are no numbers here."
+    result = compiled_regex.findall(text)
+    assert result == []  # No matches should return an empty list
+
+
+def test_findall_empty_string(compiled_regex):
+    text = ""
+    result = compiled_regex.findall(text)
+    assert result == []  # Empty string should return an empty list
+
+
+# Test cases for the `sub` method
+def test_sub_single_replacement(compiled_regex):
+    text = "There are 123 apples."
+    result = compiled_regex.sub("NUM", text)
+    assert result == "There are NUM apples."  # Single replacement
+
+
+def test_sub_multiple_replacements(compiled_regex):
+    text = "There are 123 apples and 456 oranges."
+    result = compiled_regex.sub("NUM", text)
+    assert result == "There are NUM apples and NUM oranges."  # Multiple replacements
+
+
+def test_sub_no_matches(compiled_regex):
+    text = "There are no numbers here."
+    result = compiled_regex.sub("NUM", text)
+    assert result == text  # No matches, original text should be returned
+
+
+def test_sub_empty_string(compiled_regex):
+    text = ""
+    result = compiled_regex.sub("NUM", text)
+    assert result == ""  # Empty string should remain unchanged
+
+
+# Edge case: Invalid regex pattern
+def test_invalid_regex_pattern():
+    with pytest.raises(ValueError):
+        CompiledRegex(r"*invalid")  # Invalid regex pattern should raise ValueError
