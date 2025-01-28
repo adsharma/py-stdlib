@@ -1,3 +1,5 @@
+import cffi
+
 from stdlib._cffi_util import load_library
 
 # Define the C interface
@@ -6,9 +8,15 @@ interface = """
     bool match_compiled(int id, const char* text);
     void release_compiled(int id);
     bool match(const char* pattern, const char* text);
+    const char* search_pattern(int id, const char* text);
+    char** findall_pattern(int id, const char* text);
+    void free_matches(char** matches);
+    const char* substitute_pattern(int id, const char* text, const char* replacement);
+    void free(void *ptr);
 """
 
 # Load the shared library
+ffi = cffi.FFI()
 lib = load_library("regex_wrapper", interface)
 
 
@@ -35,17 +43,29 @@ class CompiledRegex:
         # Search for the compiled regex in the text
         result = lib.search_pattern(self.id, text.encode("utf-8"))  # type: ignore
         if result:
-            return result.decode("utf-8")
+            ptr = result
+            try:
+                result_bytes: bytes = ffi.string(result)
+                return result_bytes.decode("utf-8")
+            finally:
+                lib.free(ptr)
         return None
 
     def findall(self, text: str) -> list[str]:
         # Find all matches of the compiled regex in the text
-        result = lib.search_pattern(self.id, text.encode("utf-8"))  # type: ignore
-        if result:
-            return result.decode("utf-8").split("\n")[
-                :-1
-            ]  # Split by newline and remove the last empty string
-        return []
+        matches_ptr = lib.findall_pattern(self.id, text.encode("utf-8"))  # type: ignore
+        matches = []
+        if matches_ptr:
+            try:
+                # Convert the array of C strings to a Python list
+                i = 0
+                while matches_ptr[i]:
+                    matches.append(ffi.string(matches_ptr[i]).decode("utf-8"))
+                    i += 1
+            finally:
+                # Free the allocated memory
+                lib.free_matches(matches_ptr)
+        return matches
 
     def sub(self, replacement: str, text: str) -> str:
         # Substitute all occurrences of the compiled regex in the text
@@ -53,7 +73,12 @@ class CompiledRegex:
             self.id, text.encode("utf-8"), replacement.encode("utf-8")
         )
         if result:
-            return result.decode("utf-8")
+            ptr = result
+            try:
+                result_bytes: bytes = ffi.string(result)
+                return result_bytes.decode("utf-8")
+            finally:
+                lib.free(ptr)
         return text  # Return the original text if substitution fails
 
 

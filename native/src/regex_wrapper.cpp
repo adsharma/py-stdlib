@@ -2,7 +2,9 @@
 #include <regex>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include <memory>
+#include <cstring>
 
 // A map to store compiled regex objects
 std::unordered_map<int, std::shared_ptr<std::regex>> regex_cache;
@@ -54,13 +56,14 @@ extern "C" {
         std::smatch match;
         std::string str(text);
         if (std::regex_search(str, match, *it->second)) {
-            return match.str().c_str(); // Return the matched substring
+            return strdup(match.str().c_str()); // Return the matched substring
         }
         return nullptr; // Return nullptr if no match is found
     }
 
+
     // Find all matches of a regex pattern in a string
-    const char* findall_pattern(int id, const char* text) {
+    extern "C" char** findall_pattern(int id, const char* text) {
         auto it = regex_cache.find(id);
         if (it == regex_cache.end()) {
             return nullptr; // Return nullptr if the ID is not found
@@ -68,18 +71,54 @@ extern "C" {
 
         std::string str(text);
         std::smatch match;
-        std::string result;
+        std::vector<std::string> matches;
         std::string::const_iterator searchStart(str.cbegin());
 
+        // Find all matches
         while (std::regex_search(searchStart, str.cend(), match, *it->second)) {
-            result += match.str() + "\n"; // Append each match to the result string
+            matches.push_back(match.str()); // Store each match in the vector
             searchStart = match.suffix().first;
         }
 
-        if (!result.empty()) {
-            return result.c_str(); // Return all matches as a single string separated by newlines
+        if (matches.empty()) {
+            return nullptr; // Return nullptr if no matches are found
         }
-        return nullptr; // Return nullptr if no matches are found
+
+        // Allocate an array of char* to hold the matches
+        char** result = (char**)malloc((matches.size() + 1) * sizeof(char*));
+        if (!result) {
+            return nullptr; // Return nullptr if memory allocation fails
+        }
+
+        // Copy each match into the array
+        for (size_t i = 0; i < matches.size(); ++i) {
+            result[i] = strdup(matches[i].c_str()); // Duplicate the string
+            if (!result[i]) {
+                // Free previously allocated memory if strdup fails
+                for (size_t j = 0; j < i; ++j) {
+                    free(result[j]);
+                }
+                free(result);
+                return nullptr;
+            }
+        }
+
+        // Null-terminate the array
+        result[matches.size()] = nullptr;
+
+        return result;
+    }
+
+    // Function to free the allocated memory for the matches
+    extern "C" void free_matches(char** matches) {
+        if (!matches) {
+            return;
+        }
+
+        for (size_t i = 0; matches[i] != nullptr; ++i) {
+            free(matches[i]); // Free each string
+        }
+        free(matches); // Free the array itself
     }
 
     // Substitute all occurrences of a regex pattern in a string
@@ -91,6 +130,6 @@ extern "C" {
 
         std::string str(text);
         std::string result = std::regex_replace(str, *it->second, replacement);
-        return result.c_str(); // Return the modified string
+        return strdup(result.c_str()); // Return the modified string
     }
 }
