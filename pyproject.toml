@@ -12,7 +12,7 @@ profile = "black"
 [build-system]
 requires = [
     "setuptools>=42",
-    "scikit-build>=0.13",
+    "scikit-build-core>=0.5.0",
     "cmake>=3.14",
     "ninja>=1.10",
 ]
