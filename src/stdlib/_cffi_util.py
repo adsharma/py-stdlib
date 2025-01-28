@@ -4,7 +4,7 @@ from pathlib import Path
 import cffi
 
 
-def load_library(lib_name):
+def load_library(lib_name, interface=""):
     """
     Load a shared library based on the operating system.
 
@@ -30,11 +30,7 @@ def load_library(lib_name):
     )
 
     ffi = cffi.FFI()
-    ffi.cdef(
-        """
-             bool match(const char* pattern, const char* text);
-             """
-    )
+    ffi.cdef(interface)
     lib_path = Path(__file__).parent.parent / "lib" / lib_filename
 
     return ffi.dlopen(str(lib_path))
