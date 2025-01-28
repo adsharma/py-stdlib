@@ -21,16 +21,16 @@ def match(pattern: str, text: str) -> bool:
 # Python wrapper class
 class CompiledRegex:
     def __init__(self, pattern):
-        self.id = lib.compile_pattern(
+        self.id = lib.compile_pattern(  # pyright: ignore [reportAttributeAccessIssue]
             pattern.encode("utf-8")
-        )  # pyright: ignore [reportAttributeAccessIssue]
+        )
         if self.id == -1:
             raise ValueError("Invalid regex pattern")
 
     def match(self, text):
-        return lib.match_compiled(
+        return lib.match_compiled(  # pyright: ignore [reportAttributeAccessIssue]
             self.id, text.encode("utf-8")
-        )  # pyright: ignore [reportAttributeAccessIssue]
+        )
 
     def __del__(self):
         lib.release_compiled(self.id)  # pyright: ignore [reportAttributeAccessIssue]
