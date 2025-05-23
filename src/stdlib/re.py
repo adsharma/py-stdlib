@@ -56,20 +56,29 @@ class CompiledRegex:
     def findall(self, text: str) -> list[str]:
         # Find all matches of the compiled regex in the text
         matches_ptr = lib.findall_pattern(self.id, text.encode("utf-8"))  # type: ignore
-        matches = []
-        if matches_ptr:
-            try:
-                # Convert the array of C strings to a Python list
-                i = 0
-                while matches_ptr[i]:
-                    matches.append(
-                        cast(bytes, ffi.string(matches_ptr[i])).decode("utf-8")
-                    )
-                    i += 1
-            finally:
-                # Free the allocated memory
-                lib.free_matches(matches_ptr)
-        return matches
+        if not matches_ptr:
+            return []
+
+        results = []
+        try:
+            i = 0
+            while matches_ptr[i]:
+                item_bytes = cast(bytes, ffi.string(matches_ptr[i]))
+                item_str = item_bytes.decode("utf-8")
+                
+                if self.mark_count > 1:
+                    # Split the string by the delimiter \x01 to get the tuple of groups
+                    # Ensure that an empty string trailing a delimiter is preserved, e.g. "a\x01" -> ("a", "")
+                    # The `split` method handles this correctly by default.
+                    results.append(tuple(item_str.split('\x01')))
+                else:
+                    # For mark_count == 0 (full match) or 1 (group 1 content),
+                    # the string is the match itself or group 1.
+                    results.append(item_str)
+                i += 1
+        finally:
+            lib.free_matches(matches_ptr) # type: ignore
+        return results
 
     def sub(self, replacement: str, text: str) -> str:
         # Substitute all occurrences of the compiled regex in the text

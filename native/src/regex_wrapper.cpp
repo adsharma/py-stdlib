@@ -63,53 +63,75 @@ extern "C" {
 
 
     // Find all matches of a regex pattern in a string
+    // Behavior depends on the number of capture groups in the regex:
+    // 0 groups: returns list of full matches.
+    // 1 group: returns list of strings for that group.
+    // >1 groups: returns list of strings, where each string is a concatenation of all captured groups for a match, delimited by SOH (\x01).
     extern "C" char** findall_pattern(int id, const char* text) {
         auto it = regex_cache.find(id);
         if (it == regex_cache.end()) {
-            return nullptr; // Return nullptr if the ID is not found
+            return nullptr;
         }
 
-        std::string str(text);
-        std::smatch match;
-        std::vector<std::string> matches;
-        std::string::const_iterator searchStart(str.cbegin());
+        std::shared_ptr<std::regex> re = it->second;
+        size_t num_groups = re->mark_count(); // Number of capture groups
 
-        // Find all matches
-        while (std::regex_search(searchStart, str.cend(), match, *it->second)) {
-            matches.push_back(match.str()); // Store each match in the vector
-            searchStart = match.suffix().first;
-        }
+        std::string s_text(text);
+        std::vector<std::string> collected_matches;
+        auto search_start = s_text.cbegin();
+        std::smatch current_match;
 
-        if (matches.empty()) {
-            return nullptr; // Return nullptr if no matches are found
-        }
-
-        // Allocate an array of char* to hold the matches
-        char** result = (char**)malloc((matches.size() + 1) * sizeof(char*));
-        if (!result) {
-            return nullptr; // Return nullptr if memory allocation fails
-        }
-
-        // Copy each match into the array
-        for (size_t i = 0; i < matches.size(); ++i) {
-            result[i] = strdup(matches[i].c_str()); // Duplicate the string
-            if (!result[i]) {
-                // Free previously allocated memory if strdup fails
-                for (size_t j = 0; j < i; ++j) {
-                    free(result[j]);
+        while (std::regex_search(search_start, s_text.cend(), current_match, *re)) {
+            if (num_groups == 0) { // No groups, return full match
+                collected_matches.push_back(current_match[0].str());
+            } else if (num_groups == 1) { // One group, return group 1
+                collected_matches.push_back(current_match[1].str());
+            } else { // More than one group
+                std::string combined_groups_str;
+                for (size_t i = 1; i <= num_groups; ++i) { // Iterate from group 1 to num_groups
+                    combined_groups_str += current_match[i].str();
+                    if (i < num_groups) {
+                        combined_groups_str += '\x01'; // Delimiter
+                    }
                 }
-                free(result);
+                collected_matches.push_back(combined_groups_str);
+            }
+            search_start = current_match.suffix().first;
+            if (search_start == s_text.cbegin() && current_match[0].length() == 0) {
+                 // Handle empty match at the beginning of the remaining string to avoid infinite loop.
+                 // This can happen with patterns like "a*". Advance by one character.
+                 if (search_start != s_text.cend()) {
+                    search_start++;
+                 } else {
+                    break; // Reached end of string
+                 }
+            }
+
+        }
+
+        if (collected_matches.empty()) {
+            return nullptr;
+        }
+
+        char** result_array = (char**)malloc((collected_matches.size() + 1) * sizeof(char*));
+        if (!result_array) {
+            return nullptr;
+        }
+
+        for (size_t i = 0; i < collected_matches.size(); ++i) {
+            result_array[i] = strdup(collected_matches[i].c_str());
+            if (!result_array[i]) {
+                for (size_t j = 0; j < i; ++j) free(result_array[j]);
+                free(result_array);
                 return nullptr;
             }
         }
+        result_array[collected_matches.size()] = nullptr; // Null-terminate
 
-        // Null-terminate the array
-        result[matches.size()] = nullptr;
-
-        return result;
+        return result_array;
     }
 
-    // Function to free the allocated memory for the matches
+    // Function to free the allocated memory for the matches (used by findall_pattern)
     extern "C" void free_matches(char** matches) {
         if (!matches) {
             return;
