@@ -1,5 +1,4 @@
 # csv.py - CSV parsing and writing
-# Copyright (C) 2024 Google, Inc.
 
 """CSV parsing and writing.
 
@@ -7,7 +6,19 @@ This module provides a CSV parser and writer.
 """
 
 import re
-from typing import Any, Dict, Iterable, List, Optional, Union, TextIO, Sequence, Type, TypeVar, Callable
+from typing import (
+    Any,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Union,
+    TextIO,
+    Sequence,
+    Type,
+    TypeVar,
+    Callable,
+)
 
 # Quoting styles
 QUOTE_MINIMAL = 0
@@ -17,7 +28,7 @@ QUOTE_NONE = 3
 
 # Internal type for a row, which is a sequence of basic data types
 _Row = Sequence[Union[str, int, float, None]]
-_DialectLike = Union[str, 'Dialect']
+_DialectLike = Union[str, "Dialect"]
 
 
 # Module-level variable for field_size_limit
@@ -27,17 +38,18 @@ _field_size_limit: int = 128 * 1024  # Default limit (128KB)
 # Exception thrown by CSV parser/writer
 class Error(Exception):
     """Exception thrown by CSV operations."""
+
     pass
 
 
 class Dialect:
     """
     Describes a CSV dialect.
-    
+
     Attributes:
         delimiter (str): A one-character string used to separate fields.
         doublequote (bool): Controls how instances of quotechar appearing inside a field are themselves quoted.
-        escapechar (Optional[str]): A one-character string used by the writer to escape the delimiter if quoting is set to QUOTE_NONE 
+        escapechar (Optional[str]): A one-character string used by the writer to escape the delimiter if quoting is set to QUOTE_NONE
                                    and the quotechar if doublequote is False.
         lineterminator (str): The string used to terminate lines produced by the writer.
         quotechar (Optional[str]): A one-character string used to quote fields containing special characters.
@@ -45,52 +57,78 @@ class Dialect:
         skipinitialspace (bool): When True, whitespace immediately following the delimiter is ignored.
         strict (bool): When True, raise exception Error on bad CSV input.
     """
-    def __init__(self,
-                 delimiter: Optional[str] = None,
-                 doublequote: Optional[bool] = None,
-                 escapechar: Optional[str] = None,
-                 lineterminator: Optional[str] = None,
-                 quotechar: Optional[str] = None,
-                 quoting: Optional[int] = None,
-                 skipinitialspace: Optional[bool] = None,
-                 strict: Optional[bool] = None):
 
-        self._delimiter: str = ','
+    def __init__(
+        self,
+        delimiter: Optional[str] = None,
+        doublequote: Optional[bool] = None,
+        escapechar: Optional[str] = None,
+        lineterminator: Optional[str] = None,
+        quotechar: Optional[str] = None,
+        quoting: Optional[int] = None,
+        skipinitialspace: Optional[bool] = None,
+        strict: Optional[bool] = None,
+    ):
+
+        self._delimiter: str = ","
         self._doublequote: bool = True
         self._escapechar: Optional[str] = None
-        self._lineterminator: str = '\r\n'
+        self._lineterminator: str = "\r\n"
         self._quotechar: Optional[str] = '"'
         self._quoting: int = QUOTE_MINIMAL
         self._skipinitialspace: bool = False
         self._strict: bool = False
-        
+
         # CPython's Dialect class uses properties with underscores for storage.
         # We'll set them directly but provide properties for external access.
 
-        if delimiter is not None: self._delimiter = delimiter
-        if doublequote is not None: self._doublequote = doublequote
-        if escapechar is not None: self._escapechar = escapechar
-        if lineterminator is not None: self._lineterminator = lineterminator
-        if quotechar is not None: self._quotechar = quotechar
-        if quoting is not None: self._quoting = quoting
-        if skipinitialspace is not None: self._skipinitialspace = skipinitialspace
-        if strict is not None: self._strict = strict
+        if delimiter is not None:
+            self._delimiter = delimiter
+        if doublequote is not None:
+            self._doublequote = doublequote
+        if escapechar is not None:
+            self._escapechar = escapechar
+        if lineterminator is not None:
+            self._lineterminator = lineterminator
+        if quotechar is not None:
+            self._quotechar = quotechar
+        if quoting is not None:
+            self._quoting = quoting
+        if skipinitialspace is not None:
+            self._skipinitialspace = skipinitialspace
+        if strict is not None:
+            self._strict = strict
 
         # Validation
         if not isinstance(self._delimiter, str) or len(self._delimiter) != 1:
             raise TypeError("delimiter must be a single character string")
         if not isinstance(self._doublequote, bool):
             raise TypeError("doublequote must be a boolean")
-        if self._escapechar is not None and (not isinstance(self._escapechar, str) or len(self._escapechar) != 1):
+        if self._escapechar is not None and (
+            not isinstance(self._escapechar, str) or len(self._escapechar) != 1
+        ):
             raise TypeError("escapechar must be a single character string or None")
         if not isinstance(self._lineterminator, str):
             raise TypeError("lineterminator must be a string")
-        if self._quotechar is not None and (not isinstance(self._quotechar, str) or len(self._quotechar) != 1) and self._quotechar != "": # allow empty string for quotechar
-             raise TypeError("quotechar must be a single character string or None or an empty string")
-        if self._quotechar == "": # Treat empty string as None for consistency internally for some checks
+        if (
+            self._quotechar is not None
+            and (not isinstance(self._quotechar, str) or len(self._quotechar) != 1)
+            and self._quotechar != ""
+        ):  # allow empty string for quotechar
+            raise TypeError(
+                "quotechar must be a single character string or None or an empty string"
+            )
+        if (
+            self._quotechar == ""
+        ):  # Treat empty string as None for consistency internally for some checks
             self._quotechar = None
 
-        if not isinstance(self._quoting, int) or self._quoting not in [QUOTE_MINIMAL, QUOTE_ALL, QUOTE_NONNUMERIC, QUOTE_NONE]:
+        if not isinstance(self._quoting, int) or self._quoting not in [
+            QUOTE_MINIMAL,
+            QUOTE_ALL,
+            QUOTE_NONNUMERIC,
+            QUOTE_NONE,
+        ]:
             raise TypeError("quoting must be one of the QUOTE_* constants")
         if not isinstance(self._skipinitialspace, bool):
             raise TypeError("skipinitialspace must be a boolean")
@@ -101,43 +139,62 @@ class Dialect:
             # This is not an error at dialect creation, but writer might raise error if problematic data is passed
             pass
         if self._quoting != QUOTE_NONE and self._quotechar is None:
-             raise TypeError("quotechar must be a character if quoting is not QUOTE_NONE")
+            raise TypeError(
+                "quotechar must be a character if quoting is not QUOTE_NONE"
+            )
 
+    @property
+    def delimiter(self) -> str:
+        return self._delimiter
 
     @property
-    def delimiter(self) -> str: return self._delimiter
+    def doublequote(self) -> bool:
+        return self._doublequote
+
     @property
-    def doublequote(self) -> bool: return self._doublequote
+    def escapechar(self) -> Optional[str]:
+        return self._escapechar
+
     @property
-    def escapechar(self) -> Optional[str]: return self._escapechar
+    def lineterminator(self) -> str:
+        return self._lineterminator
+
     @property
-    def lineterminator(self) -> str: return self._lineterminator
+    def quotechar(self) -> Optional[str]:
+        return self._quotechar
+
     @property
-    def quotechar(self) -> Optional[str]: return self._quotechar
+    def quoting(self) -> int:
+        return self._quoting
+
     @property
-    def quoting(self) -> int: return self._quoting
+    def skipinitialspace(self) -> bool:
+        return self._skipinitialspace
+
     @property
-    def skipinitialspace(self) -> bool: return self._skipinitialspace
-    @property
-    def strict(self) -> bool: return self._strict
+    def strict(self) -> bool:
+        return self._strict
 
     # To allow Dialect instances to be used in **fmtparams style
     def _asdict(self) -> Dict[str, Any]:
         return {
-            'delimiter': self.delimiter,
-            'doublequote': self.doublequote,
-            'escapechar': self.escapechar,
-            'lineterminator': self.lineterminator,
-            'quotechar': self.quotechar,
-            'quoting': self.quoting,
-            'skipinitialspace': self.skipinitialspace,
-            'strict': self.strict,
+            "delimiter": self.delimiter,
+            "doublequote": self.doublequote,
+            "escapechar": self.escapechar,
+            "lineterminator": self.lineterminator,
+            "quotechar": self.quotechar,
+            "quoting": self.quoting,
+            "skipinitialspace": self.skipinitialspace,
+            "strict": self.strict,
         }
 
 
 _dialects: Dict[str, Dialect] = {}
 
-def register_dialect(name: str, dialect: Optional[_DialectLike] = None, **fmtparams: Any) -> None:
+
+def register_dialect(
+    name: str, dialect: Optional[_DialectLike] = None, **fmtparams: Any
+) -> None:
     if not isinstance(name, str):
         raise TypeError("dialect name must be a string")
 
@@ -150,19 +207,21 @@ def register_dialect(name: str, dialect: Optional[_DialectLike] = None, **fmtpar
     if dialect is not None:
         if isinstance(dialect, Dialect):
             d = dialect
-        elif isinstance(dialect, str): # Name of an existing dialect to alias
-            d = get_dialect(dialect) # This will use the new get_dialect
+        elif isinstance(dialect, str):  # Name of an existing dialect to alias
+            d = get_dialect(dialect)  # This will use the new get_dialect
         else:
-            raise TypeError("dialect argument must be a Dialect instance or a string name of a registered dialect")
-        
-        if fmtparams: # Override attributes of the passed dialect object
+            raise TypeError(
+                "dialect argument must be a Dialect instance or a string name of a registered dialect"
+            )
+
+        if fmtparams:  # Override attributes of the passed dialect object
             # Create a new Dialect based on the old one, then apply fmtparams
             # This is safer than modifying the original dialect instance if it's shared
             base_params = d._asdict()
             base_params.update(fmtparams)
             d = Dialect(**base_params)
         _dialects[name] = d
-    else: # No dialect object, create new from fmtparams
+    else:  # No dialect object, create new from fmtparams
         _dialects[name] = Dialect(**fmtparams)
 
 
@@ -170,6 +229,7 @@ def unregister_dialect(name: str) -> None:
     if name not in _dialects:
         raise Error(f"unknown dialect: {name}")
     del _dialects[name]
+
 
 def get_dialect(name: _DialectLike) -> Dialect:
     if isinstance(name, Dialect):
@@ -180,13 +240,15 @@ def get_dialect(name: _DialectLike) -> Dialect:
         raise Error(f"unknown dialect: {name}")
     return _dialects[name]
 
+
 def list_dialects() -> List[str]:
     return list(_dialects.keys())
 
+
 # Predefined dialects
-register_dialect("excel", Dialect()) # Default Dialect values match Excel
-register_dialect("excel-tab", Dialect(delimiter='\t'))
-register_dialect("unix", Dialect(lineterminator='\n', quoting=QUOTE_ALL))
+register_dialect("excel", Dialect())  # Default Dialect values match Excel
+register_dialect("excel-tab", Dialect(delimiter="\t"))
+register_dialect("unix", Dialect(lineterminator="\n", quoting=QUOTE_ALL))
 
 
 def field_size_limit(new_limit: Optional[int] = None) -> int:
@@ -203,7 +265,9 @@ class Sniffer:
     def __init__(self) -> None:
         pass
 
-    def sniff(self, sample: str, delimiters: Optional[str] = None) -> Type[Dialect]: # Returns Type[Dialect] in CPython, effectively a class
+    def sniff(
+        self, sample: str, delimiters: Optional[str] = None
+    ) -> Type[Dialect]:  # Returns Type[Dialect] in CPython, effectively a class
         # For our implementation, returning a Dialect instance is more straightforward.
         # The prompt says "Returns a Dialect instance (or a subclass)"
         # Let's make it return a Dialect instance.
@@ -219,92 +283,116 @@ class Sniffer:
             delimiters_to_try = ",;\t|:"
         else:
             delimiters_to_try = delimiters
-        
+
         best_dialect_params: Dict[str, Any] = {}
         max_consistency = -1
 
         for delim_char in delimiters_to_try:
             # Basic consistency check: count number of fields per line
-            field_counts: Dict[int, int] = {} # field_count -> num_lines_with_this_count
-            possible_quotechars = ['"', "'"] # Common quote chars
-            
+            field_counts: Dict[int, int] = (
+                {}
+            )  # field_count -> num_lines_with_this_count
+            possible_quotechars = ['"', "'"]  # Common quote chars
+
             current_quotechar_candidate = None
-            current_doublequote_candidate = True # Assume true initially
+            current_doublequote_candidate = True  # Assume true initially
 
             num_fields_this_delim = -1
 
             try:
                 # Attempt to parse first few lines with this delimiter
                 # This is a simplified sniffer. A real one is much more complex.
-                potential_dialect_params = {'delimiter': delim_char}
-                
+                potential_dialect_params = {"delimiter": delim_char}
+
                 # Try to guess quotechar and quoting style
                 # Count quotechar occurrences to infer
                 quote_counts: Dict[str, int] = {q: 0 for q in possible_quotechars}
-                for line in lines[:5]: # Sniff based on first few lines
+                for line in lines[:5]:  # Sniff based on first few lines
                     for qc in possible_quotechars:
                         quote_counts[qc] += line.count(qc)
 
                 # Simplistic: pick most frequent quotechar if it appears evenly
                 # (e.g., twice per quoted field, or overall even number implies pairs)
                 # This is very naive.
-                sorted_quotes = sorted(quote_counts.items(), key=lambda item: item[1], reverse=True)
-                if sorted_quotes and sorted_quotes[0][1] > 0 and sorted_quotes[0][1] % 2 == 0:
+                sorted_quotes = sorted(
+                    quote_counts.items(), key=lambda item: item[1], reverse=True
+                )
+                if (
+                    sorted_quotes
+                    and sorted_quotes[0][1] > 0
+                    and sorted_quotes[0][1] % 2 == 0
+                ):
                     current_quotechar_candidate = sorted_quotes[0][0]
-                    potential_dialect_params['quotechar'] = current_quotechar_candidate
+                    potential_dialect_params["quotechar"] = current_quotechar_candidate
                     # Check for doublequote (naive: if " "" " or ' '' ' appears)
-                    if current_quotechar_candidate + current_quotechar_candidate in sample:
-                         potential_dialect_params['doublequote'] = True
+                    if (
+                        current_quotechar_candidate + current_quotechar_candidate
+                        in sample
+                    ):
+                        potential_dialect_params["doublequote"] = True
                     else:
-                         potential_dialect_params['doublequote'] = False # Could be escapechar or just not used
-                else: # No clear quotechar or odd number, assume no quoting or minimal that's not obvious
-                    potential_dialect_params['quotechar'] = '"' # Default, or could be None
-                    potential_dialect_params['quoting'] = QUOTE_MINIMAL # Or QUOTE_NONE if no quotes seen
+                        potential_dialect_params["doublequote"] = (
+                            False  # Could be escapechar or just not used
+                        )
+                else:  # No clear quotechar or odd number, assume no quoting or minimal that's not obvious
+                    potential_dialect_params["quotechar"] = (
+                        '"'  # Default, or could be None
+                    )
+                    potential_dialect_params["quoting"] = (
+                        QUOTE_MINIMAL  # Or QUOTE_NONE if no quotes seen
+                    )
 
                 # This is where a mini-parser run would be beneficial
                 # For now, use a heuristic: consistent number of fields
                 first_line_fields = -1
                 line_consistency = 0
-                for i, line in enumerate(lines[:10]): # Check consistency over more lines
+                for i, line in enumerate(
+                    lines[:10]
+                ):  # Check consistency over more lines
                     # A very simple split, doesn't respect quoting for now for sniffing delimiter
                     fields = line.split(delim_char)
                     if i == 0:
                         first_line_fields = len(fields)
-                        if first_line_fields > 0 : line_consistency +=1
+                        if first_line_fields > 0:
+                            line_consistency += 1
                     elif len(fields) == first_line_fields:
-                        line_consistency +=1
-                
+                        line_consistency += 1
+
                 if first_line_fields > 0 and line_consistency > max_consistency:
                     max_consistency = line_consistency
                     best_dialect_params = potential_dialect_params
-                    best_dialect_params.setdefault('quotechar', '"') # Ensure a default
-                    best_dialect_params.setdefault('doublequote', True)
-                    best_dialect_params.setdefault('quoting', QUOTE_MINIMAL) # Could be refined
-                    best_dialect_params.setdefault('skipinitialspace', False) # TODO: sniff this
-                    best_dialect_params.setdefault('lineterminator', '\r\n' if '\r\n' in sample else '\n')
+                    best_dialect_params.setdefault("quotechar", '"')  # Ensure a default
+                    best_dialect_params.setdefault("doublequote", True)
+                    best_dialect_params.setdefault(
+                        "quoting", QUOTE_MINIMAL
+                    )  # Could be refined
+                    best_dialect_params.setdefault(
+                        "skipinitialspace", False
+                    )  # TODO: sniff this
+                    best_dialect_params.setdefault(
+                        "lineterminator", "\r\n" if "\r\n" in sample else "\n"
+                    )
 
-
-            except Exception: # Broad exception if parsing attempt fails
+            except Exception:  # Broad exception if parsing attempt fails
                 continue
-        
+
         if not best_dialect_params:
             raise Error("Could not determine delimiter")
 
         # Create a Dialect instance. Sniffer in CPython returns a dialect *class*,
         # but instance is fine here.
         # Default strict to False for sniffed dialects usually.
-        best_dialect_params.setdefault('strict', False)
-        best_dialect_params.setdefault('escapechar', None) # TODO: sniff escapechar
+        best_dialect_params.setdefault("strict", False)
+        best_dialect_params.setdefault("escapechar", None)  # TODO: sniff escapechar
 
         return Dialect(**best_dialect_params)
-
 
     def has_header(self, sample: str) -> bool:
         if not sample:
             return False
-        
+
         lines = sample.splitlines()
-        if len(lines) < 2: # Need at least two lines to compare
+        if len(lines) < 2:  # Need at least two lines to compare
             return False
 
         try:
@@ -312,47 +400,60 @@ class Sniffer:
             # Use a restricted set of common delimiters for has_header's internal sniffing
             dialect = self.sniff(sample, delimiters=",;\t")
         except Error:
-            return False # Cannot determine dialect, cannot reliably check for header
+            return False  # Cannot determine dialect, cannot reliably check for header
 
         # Read first two lines using the sniffed dialect
         # Create a temporary reader instance
         # The reader needs to be updated to accept Dialect objects
-        
+
         # Placeholder: until reader is updated, use simple split
         # This is a rough heuristic.
         header_fields = lines[0].split(dialect.delimiter)
-        
+
         # Heuristic 1: Header fields are mostly non-numeric, data fields are more numeric
-        numeric_header_fields = sum(1 for f in header_fields if self._is_numeric(f.strip(dialect.quotechar)))
-        
+        numeric_header_fields = sum(
+            1 for f in header_fields if self._is_numeric(f.strip(dialect.quotechar))
+        )
+
         # Check a few data lines
-        data_lines_to_check = min(5, len(lines) -1)
+        data_lines_to_check = min(5, len(lines) - 1)
         avg_numeric_data_fields = 0
-        
-        if data_lines_to_check <= 0: return False
+
+        if data_lines_to_check <= 0:
+            return False
 
         for i in range(1, data_lines_to_check + 1):
             data_fields = lines[i].split(dialect.delimiter)
-            if len(data_fields) != len(header_fields): continue # Inconsistent, less likely a header
-            avg_numeric_data_fields += sum(1 for f in data_fields if self._is_numeric(f.strip(dialect.quotechar or "")))
+            if len(data_fields) != len(header_fields):
+                continue  # Inconsistent, less likely a header
+            avg_numeric_data_fields += sum(
+                1
+                for f in data_fields
+                if self._is_numeric(f.strip(dialect.quotechar or ""))
+            )
 
         avg_numeric_data_fields /= data_lines_to_check
 
         # Heuristic 2: Content of header cells differs significantly from data cells
         # (e.g. header is string, data is number; or header is capitalized differently)
         # This is very basic: if header has fewer numbers than data rows on average.
-        if numeric_header_fields < (len(header_fields) / 2) and avg_numeric_data_fields > (len(header_fields) / 2):
+        if numeric_header_fields < (
+            len(header_fields) / 2
+        ) and avg_numeric_data_fields > (len(header_fields) / 2):
             return True
-        if numeric_header_fields == 0 and avg_numeric_data_fields > 0: # Header purely text, data has some numbers
+        if (
+            numeric_header_fields == 0 and avg_numeric_data_fields > 0
+        ):  # Header purely text, data has some numbers
             return True
 
         # Heuristic 3: Header fields are often shorter and may not be quoted
         # (This is too complex for a simple sniffer without full parsing)
 
-        return False # Default to no header if heuristics are not strong
+        return False  # Default to no header if heuristics are not strong
 
     def _is_numeric(self, value: str) -> bool:
-        if not value: return False
+        if not value:
+            return False
         try:
             float(value)
             return True
@@ -360,7 +461,9 @@ class Sniffer:
             return False
 
 
-def reader(csvfile: Iterable[str], dialect: _DialectLike = 'excel', **fmtparams: Any) -> Iterable[List[str]]:
+def reader(
+    csvfile: Iterable[str], dialect: _DialectLike = "excel", **fmtparams: Any
+) -> Iterable[List[str]]:
     d = get_dialect(dialect)
     # Override dialect attributes with fmtparams
     # Create a new Dialect instance if fmtparams are present
@@ -382,39 +485,44 @@ def reader(csvfile: Iterable[str], dialect: _DialectLike = 'excel', **fmtparams:
         return
 
     # Parser states
-    START_FIELD = 0; IN_FIELD = 1; IN_QUOTED_FIELD = 2
-    AFTER_QUOTED_FIELD = 3; ESCAPE = 4
+    START_FIELD = 0
+    IN_FIELD = 1
+    IN_QUOTED_FIELD = 2
+    AFTER_QUOTED_FIELD = 3
+    ESCAPE = 4
 
     for row_num, row_str_orig in enumerate(csvfile):
         # field_size_limit check
         if len(row_str_orig) > _field_size_limit:
             raise Error(f"field larger than field limit ({_field_size_limit})")
 
-        row_str = row_str_orig.rstrip('\r\n') # Reader should not depend on lineterminator from dialect
-        
+        row_str = row_str_orig.rstrip(
+            "\r\n"
+        )  # Reader should not depend on lineterminator from dialect
+
         fields: List[str] = []
         current_field: str = ""
-        
+
         state = START_FIELD
-        previous_state_for_escape = IN_FIELD 
-        
+        previous_state_for_escape = IN_FIELD
+
         idx = 0
         len_row = len(row_str)
 
         while idx < len_row:
             char = row_str[idx]
-            
+
             # Field size limit check within a field - more complex
             # CPython checks this per field, not per line.
             # This requires accumulating current_field then checking.
             # Simplified: check per line above, and after field accumulation below.
 
             if state == START_FIELD:
-                current_field = "" 
+                current_field = ""
                 if skipinitialspace and char.isspace():
                     idx += 1
                     continue
-                
+
                 if char == quotechar and quoting != QUOTE_NONE:
                     state = IN_QUOTED_FIELD
                     previous_state_for_escape = IN_QUOTED_FIELD
@@ -423,84 +531,103 @@ def reader(csvfile: Iterable[str], dialect: _DialectLike = 'excel', **fmtparams:
                     state = ESCAPE
                 elif char == delimiter:
                     fields.append(current_field)
-                    if len(current_field) > _field_size_limit: # Check after field is formed
-                         raise Error(f"field larger than field limit ({_field_size_limit})")
+                    if (
+                        len(current_field) > _field_size_limit
+                    ):  # Check after field is formed
+                        raise Error(
+                            f"field larger than field limit ({_field_size_limit})"
+                        )
                 else:
                     current_field += char
                     state = IN_FIELD
                     previous_state_for_escape = IN_FIELD
-            
+
             elif state == IN_FIELD:
-                if escapechar and char == escapechar and \
-                   (quoting == QUOTE_NONE or not quotechar):
+                if (
+                    escapechar
+                    and char == escapechar
+                    and (quoting == QUOTE_NONE or not quotechar)
+                ):
                     previous_state_for_escape = IN_FIELD
                     state = ESCAPE
                 elif char == delimiter:
                     fields.append(current_field)
                     if len(current_field) > _field_size_limit:
-                         raise Error(f"field larger than field limit ({_field_size_limit})")
+                        raise Error(
+                            f"field larger than field limit ({_field_size_limit})"
+                        )
                     state = START_FIELD
                 else:
                     current_field += char
-            
+
             elif state == IN_QUOTED_FIELD:
                 if escapechar and char == escapechar:
                     previous_state_for_escape = IN_QUOTED_FIELD
-                    state = ESCAPE 
+                    state = ESCAPE
                 elif char == quotechar:
                     if doublequote:
-                        if idx + 1 < len_row and row_str[idx+1] == quotechar:
+                        if idx + 1 < len_row and row_str[idx + 1] == quotechar:
                             current_field += quotechar
                             idx += 1
-                        else: 
+                        else:
                             state = AFTER_QUOTED_FIELD
-                    else: 
+                    else:
                         state = AFTER_QUOTED_FIELD
                 else:
                     current_field += char
-            
-            elif state == AFTER_QUOTED_FIELD: 
+
+            elif state == AFTER_QUOTED_FIELD:
                 if char == delimiter:
                     fields.append(current_field)
                     if len(current_field) > _field_size_limit:
-                         raise Error(f"field larger than field limit ({_field_size_limit})")
+                        raise Error(
+                            f"field larger than field limit ({_field_size_limit})"
+                        )
                     state = START_FIELD
                 elif char.isspace():
-                    pass 
+                    pass
                 else:
                     if d.strict:
-                        raise Error(f"'{delimiter}' expected after '{quotechar}' at char {idx}, found '{char}'")
+                        raise Error(
+                            f"'{delimiter}' expected after '{quotechar}' at char {idx}, found '{char}'"
+                        )
                     # If not strict, CPython CSV often appends this char to the field or starts a new unquoted field.
                     # This behavior is complex. For simplicity, we'll be strict or error-prone here.
                     # Let's assume for now it's an error if strict, or append to field if not (though might be wrong for some cases)
                     # current_field += char # This is one interpretation of non-strict.
                     # state = IN_FIELD
-                    raise Error(f"malformed CSV row {row_num}: character '{char}' found after quoted field without delimiter")
+                    raise Error(
+                        f"malformed CSV row {row_num}: character '{char}' found after quoted field without delimiter"
+                    )
 
             elif state == ESCAPE:
                 current_field += char
                 state = previous_state_for_escape
-            
-            if len(current_field) > _field_size_limit: # Intermediate check
+
+            if len(current_field) > _field_size_limit:  # Intermediate check
                 raise Error(f"field larger than field limit ({_field_size_limit})")
 
             idx += 1
-        
-        if state == IN_QUOTED_FIELD: 
-            if d.strict or not (escapechar and row_str.endswith(escapechar)): # CPython behavior for unclosed quote
-                 raise Error("unexpected end of data - unclosed quote")
-        if state == ESCAPE: 
+
+        if state == IN_QUOTED_FIELD:
+            if d.strict or not (
+                escapechar and row_str.endswith(escapechar)
+            ):  # CPython behavior for unclosed quote
+                raise Error("unexpected end of data - unclosed quote")
+        if state == ESCAPE:
             raise Error("unexpected end of data - incomplete escape sequence")
 
         fields.append(current_field)
         if len(current_field) > _field_size_limit:
             raise Error(f"field larger than field limit ({_field_size_limit})")
-        
+
         yield fields
 
 
 class writer:
-    def __init__(self, csvfile: TextIO, dialect: _DialectLike = 'excel', **fmtparams: Any):
+    def __init__(
+        self, csvfile: TextIO, dialect: _DialectLike = "excel", **fmtparams: Any
+    ):
         self.csvfile = csvfile
         d = get_dialect(dialect)
         if fmtparams:
@@ -509,14 +636,15 @@ class writer:
             self.dialect = Dialect(**merged_params)
         else:
             self.dialect = d
-        
+
         # Validate dialect parameters for writer context
         if self.dialect.quoting == QUOTE_NONE and not self.dialect.escapechar:
             # Defer error to writerow if problematic field encountered
             pass
         if self.dialect.quoting != QUOTE_NONE and self.dialect.quotechar is None:
-            raise Error("quotechar must be a character if quoting is not QUOTE_NONE for writer")
-
+            raise Error(
+                "quotechar must be a character if quoting is not QUOTE_NONE for writer"
+            )
 
     def writerow(self, row: _Row) -> None:
         # Use self.dialect attributes
@@ -529,41 +657,56 @@ class writer:
 
         processed_fields: List[str] = []
         for field_obj in row:
-            if field_obj is None: field_str = ""
-            elif isinstance(field_obj, float): field_str = repr(field_obj)
-            else: field_str = str(field_obj)
+            if field_obj is None:
+                field_str = ""
+            elif isinstance(field_obj, float):
+                field_str = repr(field_obj)
+            else:
+                field_str = str(field_obj)
 
             needs_quoting = False
             if quoting == QUOTE_ALL:
-                if quotechar is None: raise Error("quotechar must be set for QUOTE_ALL")
+                if quotechar is None:
+                    raise Error("quotechar must be set for QUOTE_ALL")
                 needs_quoting = True
             elif quoting == QUOTE_MINIMAL:
-                if quotechar and (delimiter in field_str or \
-                   quotechar in field_str or \
-                   any(c in field_str for c in lineterminator)):
+                if quotechar and (
+                    delimiter in field_str
+                    or quotechar in field_str
+                    or any(c in field_str for c in lineterminator)
+                ):
                     needs_quoting = True
             elif quoting == QUOTE_NONNUMERIC:
-                if quotechar is None: raise Error("quotechar must be set for QUOTE_NONNUMERIC")
+                if quotechar is None:
+                    raise Error("quotechar must be set for QUOTE_NONNUMERIC")
                 if not isinstance(field_obj, (int, float)):
                     needs_quoting = True
-                else: 
-                    if quotechar and (delimiter in field_str or \
-                       quotechar in field_str or \
-                       any(c in field_str for c in lineterminator)):
+                else:
+                    if quotechar and (
+                        delimiter in field_str
+                        or quotechar in field_str
+                        or any(c in field_str for c in lineterminator)
+                    ):
                         needs_quoting = True
             elif quoting == QUOTE_NONE:
                 if escapechar:
                     temp_field = field_str.replace(escapechar, escapechar * 2)
                     temp_field = temp_field.replace(delimiter, escapechar + delimiter)
-                    if quotechar: # Treat quotechar as data char to be escaped
-                         temp_field = temp_field.replace(quotechar, escapechar + quotechar)
+                    if quotechar:  # Treat quotechar as data char to be escaped
+                        temp_field = temp_field.replace(
+                            quotechar, escapechar + quotechar
+                        )
                     processed_fields.append(temp_field)
                     continue
                 else:
-                    if delimiter in field_str or \
-                       (quotechar and quotechar in field_str) or \
-                       any(c in field_str for c in lineterminator):
-                        raise Error(f"delimiter or quotechar found in field, but escapechar is not set for QUOTE_NONE")
+                    if (
+                        delimiter in field_str
+                        or (quotechar and quotechar in field_str)
+                        or any(c in field_str for c in lineterminator)
+                    ):
+                        raise Error(
+                            f"delimiter or quotechar found in field, but escapechar is not set for QUOTE_NONE"
+                        )
                     processed_fields.append(field_str)
                     continue
 
@@ -573,21 +716,26 @@ class writer:
                     escaped_field = field_str.replace(quotechar, quotechar * 2)
                 elif escapechar:
                     escaped_field = field_str.replace(escapechar, escapechar * 2)
-                    escaped_field = escaped_field.replace(quotechar, escapechar + quotechar)
+                    escaped_field = escaped_field.replace(
+                        quotechar, escapechar + quotechar
+                    )
                 else:
                     # This case means quotechar is in field, needs_quoting is true,
                     # but no mechanism (doublequote=F, escapechar=None) to escape it.
-                    raise Error("quotechar found in field, but no escape mechanism (doublequote=False, escapechar=None)")
-                
+                    raise Error(
+                        "quotechar found in field, but no escape mechanism (doublequote=False, escapechar=None)"
+                    )
+
                 processed_fields.append(quotechar + escaped_field + quotechar)
             else:
                 processed_fields.append(field_str)
-        
+
         self.csvfile.write(delimiter.join(processed_fields) + lineterminator)
 
     def writerows(self, rows: Iterable[_Row]) -> None:
         for row in rows:
             self.writerow(row)
+
 
 # For DictReader, DictWriter - not part of this subtask
 # class DictReader(reader): ...
@@ -601,10 +749,20 @@ class writer:
 # Sniffer is a class.
 
 __all__ = [
-    "QUOTE_MINIMAL", "QUOTE_ALL", "QUOTE_NONNUMERIC", "QUOTE_NONE",
-    "Error", "Dialect", "Sniffer", "reader", "writer",
-    "register_dialect", "unregister_dialect", "get_dialect", "list_dialects",
-    "field_size_limit"
+    "QUOTE_MINIMAL",
+    "QUOTE_ALL",
+    "QUOTE_NONNUMERIC",
+    "QUOTE_NONE",
+    "Error",
+    "Dialect",
+    "Sniffer",
+    "reader",
+    "writer",
+    "register_dialect",
+    "unregister_dialect",
+    "get_dialect",
+    "list_dialects",
+    "field_size_limit",
     # Not including DictReader, DictWriter, __version__ for now
 ]
 # __version__ = "1.0" # Optional: if versioning is desired.
