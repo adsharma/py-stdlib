@@ -5,7 +5,6 @@
 This module provides a CSV parser and writer.
 """
 
-import re
 from typing import (
     Any,
     Dict,
@@ -16,8 +15,6 @@ from typing import (
     TextIO,
     Sequence,
     Type,
-    TypeVar,
-    Callable,
 )
 
 # Quoting styles
@@ -289,15 +286,9 @@ class Sniffer:
 
         for delim_char in delimiters_to_try:
             # Basic consistency check: count number of fields per line
-            field_counts: Dict[int, int] = (
-                {}
-            )  # field_count -> num_lines_with_this_count
             possible_quotechars = ['"', "'"]  # Common quote chars
 
             current_quotechar_candidate = None
-            current_doublequote_candidate = True  # Assume true initially
-
-            num_fields_this_delim = -1
 
             try:
                 # Attempt to parse first few lines with this delimiter
@@ -705,7 +696,7 @@ class writer:
                         or any(c in field_str for c in lineterminator)
                     ):
                         raise Error(
-                            f"delimiter or quotechar found in field, but escapechar is not set for QUOTE_NONE"
+                            "delimiter or quotechar found in field, but escapechar is not set for QUOTE_NONE"
                         )
                     processed_fields.append(field_str)
                     continue
