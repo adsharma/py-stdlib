@@ -182,7 +182,7 @@ class TestCSVReader:
         assert list(r) == [["a", " b", " c"], ["1", "  2", "   3"]]
 
     def test_embedded_newlines_in_quoted_fields(self):
-        data = 'a,"b\nc",d\r\ne,"f\r\ng",h'
+        # data = 'a,"b\nc",d\r\ne,"f\r\ng",h' # F841 - data is not used
         # sio = io.StringIO(data) # This sio is not used if r is removed
         # r = csv.reader(sio) # F841 - r is not used. sio above is also only for r.
         # Our reader gets line by line due to `for row_str_orig in csvfile:`.
@@ -371,9 +371,8 @@ class TestCSVWriter:
         # The test was later corrected to use `sio_corrected` and a different assertion.
         # Assuming the goal is to fix the E501 on the line that was *originally* here at 322.
         # The current `read_files` shows the problematic line.
-        assert (
-            sio.getvalue() == 'a,b\r\n1,2\r\n"x",""\r\n'
-        )  # Shortened comment. Note: This assertion itself is debated in the test.
+        # Shortened comment. Note: This assertion itself is debated in the test.
+        assert sio.getvalue() == 'a,b\r\n1,2\r\n"x",""\r\n'
         # Correction for writerows output:
         # If x is simple string, and "" is empty string due to None:
         # 'a,b\r\n1,2\r\nx,\r\n' (If empty string doesn't get quoted by default)
