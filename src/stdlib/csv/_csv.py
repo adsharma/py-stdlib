@@ -5,17 +5,7 @@
 This module provides a CSV parser and writer.
 """
 
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Union,
-    TextIO,
-    Sequence,
-    Type,
-)
+from typing import Any, Dict, Iterable, List, Optional, Sequence, TextIO, Union
 
 # Quoting styles
 QUOTE_MINIMAL = 0
@@ -337,20 +327,30 @@ class Sniffer:
                 # For now, use a heuristic: consistent number of fields
                 first_line_fields = -1
                 line_consistency = 0
+                total_delim_count = 0
                 for i, line in enumerate(
                     lines[:10]
                 ):  # Check consistency over more lines
                     # A very simple split, doesn't respect quoting for now for sniffing delimiter
                     fields = line.split(delim_char)
+                    total_delim_count += line.count(delim_char)
                     if i == 0:
                         first_line_fields = len(fields)
-                        if first_line_fields > 0:
+                        if (
+                            first_line_fields > 1
+                        ):  # Need at least 2 fields to be meaningful
                             line_consistency += 1
                     elif len(fields) == first_line_fields:
                         line_consistency += 1
 
-                if first_line_fields > 0 and line_consistency > max_consistency:
-                    max_consistency = line_consistency
+                # Score based on consistency and delimiter frequency
+                score = line_consistency * 10 + total_delim_count
+                if (
+                    first_line_fields > 1
+                    and score > max_consistency
+                    and total_delim_count > 0
+                ):
+                    max_consistency = score
                     best_dialect_params = potential_dialect_params
                     best_dialect_params.setdefault("quotechar", '"')  # Ensure a default
                     best_dialect_params.setdefault("doublequote", True)
@@ -367,7 +367,7 @@ class Sniffer:
             except Exception:  # Broad exception if parsing attempt fails
                 continue
 
-        if not best_dialect_params:
+        if not best_dialect_params or max_consistency <= 0:
             raise Error("Could not determine delimiter")
 
         # Create a Dialect instance. Sniffer in CPython returns a dialect *class*,
@@ -470,6 +470,7 @@ def reader(
     quotechar = d.quotechar
     quoting = d.quoting
     skipinitialspace = d.skipinitialspace
+    lineterminator = d.lineterminator
     # strict = d.strict # TODO: Use strict mode
 
     if not csvfile:
@@ -488,8 +489,8 @@ def reader(
             raise Error(f"field larger than field limit ({_field_size_limit})")
 
         row_str = row_str_orig.rstrip(
-            "\r\n"
-        )  # Reader should not depend on lineterminator from dialect
+            lineterminator
+        )  # Reader should use dialect's lineterminator
 
         fields: List[str] = []
         current_field: str = ""
@@ -579,9 +580,7 @@ def reader(
                     pass
                 else:
                     if d.strict:
-                        raise Error(
-                            f"'{delimiter}' expected after '{quotechar}' at char {idx}, found '{char}'"
-                        )
+                        raise Error(f"delimiter expected after '{quotechar}'")
                     # If not strict, CPython CSV often appends this char to the field or starts a new unquoted field.
                     # This behavior is complex. For simplicity, we'll be strict or error-prone here.
                     # Let's assume for now it's an error if strict, or append to field if not (though might be wrong for some cases)
@@ -604,7 +603,7 @@ def reader(
             if d.strict or not (
                 escapechar and row_str.endswith(escapechar)
             ):  # CPython behavior for unclosed quote
-                raise Error("unexpected end of data - unclosed quote")
+                raise Error("unclosed quote")
         if state == ESCAPE:
             raise Error("unexpected end of data - incomplete escape sequence")
 
@@ -670,7 +669,10 @@ class writer:
             elif quoting == QUOTE_NONNUMERIC:
                 if quotechar is None:
                     raise Error("quotechar must be set for QUOTE_NONNUMERIC")
-                if not isinstance(field_obj, (int, float)):
+                # Check for boolean first since isinstance(bool, int) is True
+                if isinstance(field_obj, bool) or not isinstance(
+                    field_obj, (int, float)
+                ):
                     needs_quoting = True
                 else:
                     if quotechar and (
@@ -702,20 +704,21 @@ class writer:
                     continue
 
             if needs_quoting and quotechar:
-                escaped_field = ""
+                escaped_field = field_str  # Start with the original field
                 if doublequote:
-                    escaped_field = field_str.replace(quotechar, quotechar * 2)
+                    escaped_field = escaped_field.replace(quotechar, quotechar * 2)
                 elif escapechar:
-                    escaped_field = field_str.replace(escapechar, escapechar * 2)
+                    escaped_field = escaped_field.replace(escapechar, escapechar * 2)
                     escaped_field = escaped_field.replace(
                         quotechar, escapechar + quotechar
                     )
                 else:
                     # This case means quotechar is in field, needs_quoting is true,
                     # but no mechanism (doublequote=F, escapechar=None) to escape it.
-                    raise Error(
-                        "quotechar found in field, but no escape mechanism (doublequote=False, escapechar=None)"
-                    )
+                    if quotechar in field_str:
+                        raise Error(
+                            "quotechar found in field, but no escape mechanism (doublequote=False, escapechar=None)"
+                        )
 
                 processed_fields.append(quotechar + escaped_field + quotechar)
             else:

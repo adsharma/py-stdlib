@@ -1,7 +1,9 @@
 import io
-import pytest
-import sys
 import os
+import sys
+
+import pytest
+
 from stdlib import csv
 
 # Add src directory to PYTHONPATH to allow direct import of stdlib
@@ -230,7 +232,8 @@ class TestCSVReader:
         # Let's assume strict=True for this test.
         with pytest.raises(csv.Error, match="unclosed quote"):
             list(csv.reader(io.StringIO('a,"b\nc",d'), strict=True))
-        # If not strict, it might yield `[['a', 'b']]` or `[['a', '"b']]` for `a,"b\n`. The current reader's unclosed quote error isn't bypassed by non-strict mode.
+        # If not strict, it might yield `[['a', 'b']]` or `[['a', '"b']]` for `a,"b\n`.
+        # The current reader's unclosed quote error isn't bypassed by non-strict mode.
 
     def test_empty_lines_and_whitespace_lines(self):
         data = "\r\n  \r\nval1,val2\r\n\r\n"  # Empty line, whitespace line, data, empty line
@@ -283,6 +286,7 @@ class TestCSVReader:
         with pytest.raises(csv.Error, match="unclosed quote"):
             list(csv.reader(sio))  # Test with default strictness
 
+        sio.seek(0)  # Reset position for second test
         with pytest.raises(csv.Error, match="unclosed quote"):
             list(csv.reader(sio, strict=True))
 
@@ -297,13 +301,16 @@ class TestCSVReader:
         # So it always raises an error, but message might differ or behavior could be refined for non-strict.
         # For now, let's assume strict=True in the dialect for this test.
         with pytest.raises(
-            csv.Error, match="'b' found after quoted field"
-        ):  # Or similar, based on exact error msg
+            csv.Error, match="delimiter expected after"
+        ):  # Our error message pattern
             list(csv.reader(sio, strict=True))
 
         # Test default strictness (False) - still expect error from current code
+        sio2 = io.StringIO(
+            data
+        )  # Need a fresh StringIO since the first one was consumed
         with pytest.raises(csv.Error, match="malformed CSV row"):
-            list(csv.reader(sio))
+            list(csv.reader(sio2))
 
     def test_field_size_limit_reader(self):
         original_limit = csv.field_size_limit()
@@ -372,7 +379,7 @@ class TestCSVWriter:
         # Assuming the goal is to fix the E501 on the line that was *originally* here at 322.
         # The current `read_files` shows the problematic line.
         # Shortened comment. Note: This assertion itself is debated in the test.
-        assert sio.getvalue() == 'a,b\r\n1,2\r\n"x",""\r\n'
+        assert sio.getvalue() == "a,b\r\n1,2\r\nx,\r\n"
         # Correction for writerows output:
         # If x is simple string, and "" is empty string due to None:
         # 'a,b\r\n1,2\r\nx,\r\n' (If empty string doesn't get quoted by default)
@@ -431,7 +438,7 @@ class TestCSVWriter:
         sio3 = io.StringIO()  # Numeric that contains delimiter
         w3 = csv.writer(sio3, quoting=csv.QUOTE_NONNUMERIC, delimiter=".")
         w3.writerow([1, 2.3])  # 2.3 -> "2.3" which contains '.', so it will be quoted
-        assert sio3.getvalue() == '1,"2.3"\r\n'
+        assert sio3.getvalue() == '1."2.3"\r\n'
 
     def test_quoting_none_writer_with_escapechar(self):
         sio = io.StringIO()
@@ -572,7 +579,7 @@ class TestCSVDialect:
         ):
             csv.Dialect(delimiter="long")
         with pytest.raises(TypeError, match="doublequote must be a boolean"):
-            csv.Dialect(doublequote=True)  # Changed "true" to True
+            csv.Dialect(doublequote="true")  # Invalid type - should be boolean
         # ... other validation checks in Dialect.__init__ can be tested similarly
 
     def test_predefined_dialects_exist(self):
