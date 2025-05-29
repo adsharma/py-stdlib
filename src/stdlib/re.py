@@ -50,7 +50,7 @@ class CompiledRegex:
                 result_bytes = cast(bytes, ffi.string(result))
                 return result_bytes.decode("utf-8")
             finally:
-                lib.free(ptr)  # pyright: ignore [reportAttributeAccessIssue]
+                lib.free(ptr)  # type: ignore[attr-defined]
         return None
 
     def findall(self, text: str) -> list[str]:
@@ -68,7 +68,7 @@ class CompiledRegex:
                     i += 1
             finally:
                 # Free the allocated memory
-                lib.free_matches(matches_ptr)  # pyright: ignore [reportAttributeAccessIssue]
+                lib.free_matches(matches_ptr)  # type: ignore[attr-defined]
         return matches
 
     def sub(self, replacement: str, text: str) -> str:
@@ -82,7 +82,7 @@ class CompiledRegex:
                 result_bytes = cast(bytes, ffi.string(result))
                 return result_bytes.decode("utf-8")
             finally:
-                lib.free(ptr)  # pyright: ignore [reportAttributeAccessIssue]
+                lib.free(ptr)  # type: ignore[attr-defined]
         return text  # Return the original text if substitution fails
 
 
