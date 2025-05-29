@@ -283,7 +283,7 @@ class Sniffer:
             try:
                 # Attempt to parse first few lines with this delimiter
                 # This is a simplified sniffer. A real one is much more complex.
-                potential_dialect_params = {"delimiter": delim_char}
+                potential_dialect_params: Dict[str, Any] = {"delimiter": delim_char}
 
                 # Try to guess quotechar and quoting style
                 # Count quotechar occurrences to infer
@@ -312,16 +312,10 @@ class Sniffer:
                     ):
                         potential_dialect_params["doublequote"] = True
                     else:
-                        potential_dialect_params["doublequote"] = (
-                            False  # Could be escapechar or just not used
-                        )
+                        potential_dialect_params["doublequote"] = False
                 else:  # No clear quotechar or odd number, assume no quoting or minimal that's not obvious
-                    potential_dialect_params["quotechar"] = (
-                        '"'  # Default, or could be None
-                    )
-                    potential_dialect_params["quoting"] = (
-                        QUOTE_MINIMAL  # Or QUOTE_NONE if no quotes seen
-                    )
+                    potential_dialect_params["quotechar"] = '"'
+                    potential_dialect_params["quoting"] = QUOTE_MINIMAL
 
                 # This is where a mini-parser run would be beneficial
                 # For now, use a heuristic: consistent number of fields
@@ -559,7 +553,8 @@ def reader(
                 elif char == quotechar:
                     if doublequote:
                         if idx + 1 < len_row and row_str[idx + 1] == quotechar:
-                            current_field += quotechar
+                            if quotechar is not None:
+                                current_field += quotechar
                             idx += 1
                         else:
                             state = AFTER_QUOTED_FIELD
