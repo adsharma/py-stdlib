@@ -1,9 +1,7 @@
 import io
-import os
-import sys
-
 import pytest
-
+import sys
+import os
 from stdlib import csv
 
 # Add src directory to PYTHONPATH to allow direct import of stdlib
@@ -232,8 +230,7 @@ class TestCSVReader:
         # Let's assume strict=True for this test.
         with pytest.raises(csv.Error, match="unclosed quote"):
             list(csv.reader(io.StringIO('a,"b\nc",d'), strict=True))
-        # If not strict, it might yield `[['a', 'b']]` or `[['a', '"b']]` for `a,"b\n`.
-        # The current reader's unclosed quote error isn't bypassed by non-strict mode.
+        # If not strict, it might yield `[['a', 'b']]` or `[['a', '"b']]` for `a,"b\n`. The current reader's unclosed quote error isn't bypassed by non-strict mode.
 
     def test_empty_lines_and_whitespace_lines(self):
         data = "\r\n  \r\nval1,val2\r\n\r\n"  # Empty line, whitespace line, data, empty line
@@ -575,7 +572,7 @@ class TestCSVDialect:
         ):
             csv.Dialect(delimiter="long")
         with pytest.raises(TypeError, match="doublequote must be a boolean"):
-            csv.Dialect(doublequote="true")
+            csv.Dialect(doublequote=True)  # Changed "true" to True
         # ... other validation checks in Dialect.__init__ can be tested similarly
 
     def test_predefined_dialects_exist(self):
@@ -682,7 +679,7 @@ class TestCSVGeneral:
         assert csv.field_size_limit() == new_limit
 
         with pytest.raises(TypeError):
-            csv.field_size_limit("not an int")
+            csv.field_size_limit("not an int")  # type: ignore[arg-type]
 
         # Reset to original for other tests
         csv.field_size_limit(original_limit)

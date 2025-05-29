@@ -264,7 +264,7 @@ class Sniffer:
 
     def sniff(
         self, sample: str, delimiters: Optional[str] = None
-    ) -> Type[Dialect]:  # Returns Type[Dialect] in CPython, effectively a class
+    ) -> Dialect:  # Changed Type[Dialect] to Dialect
         # For our implementation, returning a Dialect instance is more straightforward.
         # The prompt says "Returns a Dialect instance (or a subclass)"
         # Let's make it return a Dialect instance.
