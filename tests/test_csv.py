@@ -579,7 +579,7 @@ class TestCSVDialect:
         ):
             csv.Dialect(delimiter="long")
         with pytest.raises(TypeError, match="doublequote must be a boolean"):
-            csv.Dialect(doublequote="true")  # Invalid type - should be boolean
+            csv.Dialect(doublequote="true")  # type: ignore # Invalid type - should be boolean
         # ... other validation checks in Dialect.__init__ can be tested similarly
 
     def test_predefined_dialects_exist(self):
